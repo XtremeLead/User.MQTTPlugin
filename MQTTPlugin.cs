@@ -3,7 +3,7 @@ using SimHub.Plugins;
 using System;
 using System.Windows.Media;
 using System.IO;
-using System.Globalization;
+
 
 namespace User.MQTTPlugin
 {
@@ -39,9 +39,9 @@ namespace User.MQTTPlugin
             }
             set
             {
-                DateTime localDate = DateTime.Now;
-                string timestamp = localDate.ToString(new CultureInfo("nl-NL"));
-                mqttMessage = timestamp + ": " + value;
+
+                //mqttMessage = timestamp + ": " + value;
+                mqttMessage = value;
                 this.AttachDelegate("MQTTMessage", () => mqttMessage);
             }
         }

@@ -7,6 +7,7 @@ using uPLibrary.Networking.M2Mqtt;
 using System.IO;
 using uPLibrary.Networking.M2Mqtt.Messages;
 using User.MQTTPlugin;
+using System.Globalization;
 
 namespace User.MQTTPlugin
 {
@@ -67,7 +68,14 @@ namespace User.MQTTPlugin
 
 
             MQTTPlugin plugin = new MQTTPlugin();
-            plugin.MqttMessage = payload;
+            //plugin.MqttMessage = payload;
+            DateTime localDate = DateTime.Now;
+            string timestamp = localDate.ToString(new CultureInfo("nl-NL"));
+            plugin.MqttMessage = "{"
+                + "\"topic\":\"" + e.Topic.ToString() + "\","
+                + "\"payload\":\"" + payload + "\","
+                + "\"timestamp\":\"" + timestamp
+                + "\"}";
         }
 
         public static void ConnectAndSubscribe()
