@@ -24,11 +24,11 @@ namespace User.MQTTPlugin
             Properties.Settings.Default["lastConnectionSuccessful"] = client.IsConnected;
             if (client.IsConnected)
             {
-                WriteLog("Connected to MQTT Broker");
+                SimHub.Logging.Current.Info("Connected to MQTT Broker");
             }
             else
             {
-                WriteLog("Failed to connect");
+                SimHub.Logging.Current.Info("Failed to connect");
             }
             CLIENT = client;
         }
@@ -54,18 +54,6 @@ namespace User.MQTTPlugin
             }
         }
 
-        private static void WriteLog(string value)
-        {
-            // Set a variable to the Documents path.
-            string docPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-
-            // Append text to an existing file named "WriteLines.txt".
-            using (StreamWriter outputFile = new StreamWriter(Path.Combine(docPath, "WriteLines.txt"), true))
-            {
-                outputFile.WriteLine(value.ToString());
-            }
-        }
-
         public static void Subscribe(MqttClient client, string topic)
         {
             client.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
@@ -75,7 +63,8 @@ namespace User.MQTTPlugin
         {
             string payload = System.Text.Encoding.Default.GetString(e.Message);
             string LogMessage = "Received " + payload + " from topic " + e.Topic.ToString();
-            WriteLog(LogMessage);
+            SimHub.Logging.Current.Info(LogMessage);
+
 
             MQTTPlugin plugin = new MQTTPlugin();
             plugin.MqttMessage = payload;
@@ -90,7 +79,7 @@ namespace User.MQTTPlugin
             string username = Properties.Settings.Default["mqttuser"].ToString();
             string password = Properties.Settings.Default["mqttpass"].ToString();
 
-            WriteLog("Connecting MQTT");
+            SimHub.Logging.Current.Info("Connecting MQTT");
             if (CLIENT == null || !CLIENT.IsConnected)
             {
                 ConnectMQTT(broker, port, clientId, username, password);

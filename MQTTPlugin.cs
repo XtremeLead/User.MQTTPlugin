@@ -7,7 +7,7 @@ using System.Globalization;
 
 namespace User.MQTTPlugin
 {
-    [PluginDescription("Plugin to subscribe to MQTT topics")]
+    [PluginDescription("Plugin to subscribe to a MQTT topic")]
     [PluginAuthor("XtremeLead")]
     [PluginName("MQTT plugin")]
     public class MQTTPlugin : IPlugin, IDataPlugin, IWPFSettingsV2
@@ -28,14 +28,9 @@ namespace User.MQTTPlugin
         /// Gets a short plugin title to show in left menu. Return null if you want to use the title as defined in PluginName attribute.
         /// </summary>
         public string LeftMenuTitle => "MQTT plugin";
-        private double currentSpeed = 0;
+
         private string mqttMessage = "";
 
-        public double CurrentSpeed
-        {
-            get { return currentSpeed; }
-            set { currentSpeed = value; }
-        }
         public string MqttMessage
         {
             get
@@ -47,7 +42,7 @@ namespace User.MQTTPlugin
                 DateTime localDate = DateTime.Now;
                 string timestamp = localDate.ToString(new CultureInfo("nl-NL"));
                 mqttMessage = timestamp + ": " + value;
-                this.AttachDelegate("MQTTMessage", () => this.mqttMessage);
+                this.AttachDelegate("MQTTMessage", () => mqttMessage);
             }
         }
         /// <summary>
@@ -66,15 +61,7 @@ namespace User.MQTTPlugin
             {
                 if (data.OldData != null && data.NewData != null)
                 {
-                    //this.WriteLog(data.OldData.SpeedKmh);
-                    //data.OldData.SpeedKmh < Settings.SpeedWarningLevel && 
-                    if (data.OldData.SpeedKmh < Settings.SpeedWarningLevel && data.OldData.SpeedKmh >= Settings.SpeedWarningLevel)
-                    {
-                        this.WriteLog(data.NewData.SpeedKmh);
-                        // Trigger an event
-                        this.TriggerEvent("SpeedWarning");
-                    }
-                    this.CurrentSpeed = data.NewData.SpeedKmh;
+
                 }
             }
         }
@@ -119,37 +106,18 @@ namespace User.MQTTPlugin
 
             // Declare a property available in the property list, this gets evaluated "on demand" (when shown or used in formulas)
             this.AttachDelegate("CurrentDateTime", () => DateTime.Now);
-            this.AttachDelegate("CurrentSpeedWarningLevel", () => Settings.SpeedWarningLevel);
-            this.AttachDelegate("CurrentSpeed", () => this.CurrentSpeed);
-            this.AttachDelegate("MQTTMessage", () => this.mqttMessage);
+
+            this.AttachDelegate("MQTTMessage", () => mqttMessage);
 
             // Declare an event
-            this.AddEvent("SpeedWarning");
+
 
             // Declare an action which can be called
-            this.AddAction("IncrementSpeedWarning", (a, b) =>
-            {
-                Settings.SpeedWarningLevel++;
-                SimHub.Logging.Current.Info("Speed warning changed");
-            });
+
 
             // Declare an action which can be called
-            this.AddAction("DecrementSpeedWarning", (a, b) =>
-            {
-                Settings.SpeedWarningLevel--;
-            });
+
         }
 
-        private void WriteLog(double value)
-        {
-            // Set a variable to the Documents path.
-            string docPath = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
-
-            // Append text to an existing file named "WriteLines.txt".
-            using (StreamWriter outputFile = new StreamWriter(Path.Combine(docPath, "WriteLines.txt"), true))
-            {
-                outputFile.WriteLine(value.ToString());
-            }
-        }
     }
 }
