@@ -13,12 +13,7 @@ namespace User.MQTTPlugin
     // https://docs.emqx.com/en/cloud/latest/connect_to_deployments/c_sharp_sdk.html
     public class MQTTClient
     {
-        private static string broker = "172.16.4.10";
-        private static readonly int port = 1883;
-        private static readonly string topic = "simhub/commands/light/kantoor";
-        private static string clientId = Guid.NewGuid().ToString();
-        private static readonly string username = "mqtt-user";
-        private static readonly string password = "2Rl*_eSTEb+s4Br-EPR0wrus2U@i33aST3Xl0RLN4";
+
         public static MqttClient CLIENT = null;
 
         public static void ConnectMQTT(string broker, int port, string clientId, string username, string password)
@@ -58,11 +53,7 @@ namespace User.MQTTPlugin
                 return false;
             }
         }
-        public static void DisconnectClient()
-        {
-            //client.Disconnect();
-            string test = "test";
-        }
+
         private static void WriteLog(string value)
         {
             // Set a variable to the Documents path.
@@ -92,6 +83,13 @@ namespace User.MQTTPlugin
 
         public static void ConnectAndSubscribe()
         {
+            string broker = Properties.Settings.Default["mqttserver"].ToString();
+            int port = int.Parse(Properties.Settings.Default["mqttport"].ToString());
+            string topic = Properties.Settings.Default["mqtttopic"].ToString();
+            string clientId = Guid.NewGuid().ToString();
+            string username = Properties.Settings.Default["mqttuser"].ToString();
+            string password = Properties.Settings.Default["mqttpass"].ToString();
+
             WriteLog("Connecting MQTT");
             if (CLIENT == null || !CLIENT.IsConnected)
             {
