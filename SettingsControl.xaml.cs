@@ -33,7 +33,9 @@ namespace User.MQTTPlugin
             txtPassword.Text = setting.GetSetting("mqttpass");
             txtTopic.Text = setting.GetSetting("mqtttopic");
             settings = MQTTSettings.LoadSettings();
-
+            ConnectionStatus.Content = MQTTClient.CLIENT.IsConnected ?
+               "Successfully connected. Happy simracing!" :
+               "Connection failed. Please check your settings or broker availability.";
         }
         public SettingsControl(MQTTPlugin plugin) : this()
         {
@@ -43,6 +45,7 @@ namespace User.MQTTPlugin
         private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             StoreInSettings("mqttserver", sender);
+
         }
 
         private void TextBox_TextChanged_1(object sender, TextChangedEventArgs e)
@@ -67,6 +70,7 @@ namespace User.MQTTPlugin
 
         private void StoreInSettings(string key, object sender)
         {
+            if (btnSave != null) btnSave.IsEnabled = false;
             TextBox textBox = sender as TextBox;
             if (textBox != null)
             {
@@ -79,6 +83,9 @@ namespace User.MQTTPlugin
         {
             //save
             MQTTSettings.SaveSettings();
+            ConnectionStatus.Content = MQTTClient.CLIENT.IsConnected ?
+               "Successfully connected. Happy simracing!" :
+               "Connection failed. Please check your settings or broker availability.";
         }
 
         private void SHButtonPrimary_Click_1(object sender, RoutedEventArgs e)
