@@ -98,6 +98,7 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <None Include="README.md" />
     <None Include="Resources\sdkmenuicon.png" />
   </ItemGroup>
   <ItemGroup>
