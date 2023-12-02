@@ -7,7 +7,7 @@ using System.IO;
 
 namespace User.MQTTPlugin
 {
-    [PluginDescription("Plugin to subscribe to a MQTT topic")]
+    [PluginDescription("Plugin to subscribe to a MQTT topic. Returns JSON object.")]
     [PluginAuthor("XtremeLead")]
     [PluginName("MQTT plugin")]
     public class MQTTPlugin : IPlugin, IDataPlugin, IWPFSettingsV2

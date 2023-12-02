@@ -26,7 +26,7 @@ namespace User.MQTTPlugin
         public SettingsControl()
         {
             InitializeComponent();
-            var setting = new MQTTSettings();
+            MQTTSettings setting = new MQTTSettings();
             txtBroker.Text = setting.GetSetting("mqttserver");
             txtPort.Text = setting.GetSetting("mqttport");
             txtUser.Text = setting.GetSetting("mqttuser");
@@ -70,7 +70,10 @@ namespace User.MQTTPlugin
 
         private void StoreInSettings(string key, object sender)
         {
-            if (btnSave != null) btnSave.IsEnabled = false;
+            if (btnSave != null)
+            {
+                btnSave.IsEnabled = false;
+            }
             TextBox textBox = sender as TextBox;
             if (textBox != null)
             {
@@ -81,7 +84,6 @@ namespace User.MQTTPlugin
 
         private void SHButtonPrimary_Click(object sender, RoutedEventArgs e)
         {
-            //save
             MQTTSettings.SaveSettings();
             ConnectionStatus.Content = MQTTClient.CLIENT.IsConnected ?
                "Successfully connected. Happy simracing!" :
