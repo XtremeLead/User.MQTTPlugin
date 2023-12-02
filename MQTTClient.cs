@@ -20,16 +20,26 @@ namespace User.MQTTPlugin
         public static void ConnectMQTT(string broker, int port, string clientId, string username, string password)
         {
             MqttClient client = new MqttClient(broker, port, false, MqttSslProtocols.None, null, null);
-            client.Connect(clientId, username, password);
+            try
+            {
+                client.Connect(clientId, username, password);
+            }
+            catch (Exception e)
+            {
+                Properties.Settings.Default["lastConnectionSuccessful"] = false;
+                SimHub.Logging.Current.Info($"Failed to connect to MQTT Broker {broker}. {e.InnerException.Message}");
+                //throw;
+            }
+
             IsConnected = client.IsConnected;
             Properties.Settings.Default["lastConnectionSuccessful"] = client.IsConnected;
             if (client.IsConnected)
             {
-                SimHub.Logging.Current.Info("Connected to MQTT Broker");
+                SimHub.Logging.Current.Info($"Connected to MQTT Broker {broker}");
             }
             else
             {
-                SimHub.Logging.Current.Info("Failed to connect");
+                SimHub.Logging.Current.Info($"Failed to connect to MQTT Broker {broker}");
             }
             CLIENT = client;
         }
@@ -45,11 +55,13 @@ namespace User.MQTTPlugin
             Properties.Settings.Default["lastConnectionSuccessful"] = client.IsConnected;
             if (client.IsConnected)
             {
+                SimHub.Logging.Current.Info($"Connection test to connect to MQTT Broker {broker} succeeded. Disconnecting...");
                 client.Disconnect();
                 return true;
             }
             else
             {
+                SimHub.Logging.Current.Info($"Connection test to connect to MQTT Broker {broker} failed.");
                 client.Disconnect();
                 return false;
             }
@@ -63,7 +75,7 @@ namespace User.MQTTPlugin
         public static void client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
         {
             string payload = System.Text.Encoding.Default.GetString(e.Message);
-            string LogMessage = "Received " + payload + " from topic " + e.Topic.ToString();
+            string LogMessage = $"Received MQTT {payload} from topic {e.Topic.ToString()}";
             SimHub.Logging.Current.Info(LogMessage);
 
 
@@ -83,11 +95,11 @@ namespace User.MQTTPlugin
             string broker = Properties.Settings.Default["mqttserver"].ToString();
             int port = int.Parse(Properties.Settings.Default["mqttport"].ToString());
             string topic = Properties.Settings.Default["mqtttopic"].ToString();
-            string clientId = Guid.NewGuid().ToString();
             string username = Properties.Settings.Default["mqttuser"].ToString();
             string password = Properties.Settings.Default["mqttpass"].ToString();
+            string clientId = Guid.NewGuid().ToString();
 
-            SimHub.Logging.Current.Info("Connecting MQTT");
+            SimHub.Logging.Current.Info($"Connecting MQTT on {broker}.");
             if (CLIENT == null || !CLIENT.IsConnected)
             {
                 ConnectMQTT(broker, port, clientId, username, password);
