@@ -23,19 +23,37 @@ namespace User.MQTTPlugin
         public MQTTPlugin Plugin { get; }
         public MQTTClient Client { get; }
         private IDictionary<string, string> settings = new Dictionary<string, string>();
+        private static readonly string CONNECTION_FAILED_MESSAGE = "Connection failed. Please check your settings or broker availability.";
+        private static readonly string CONNECTION_SUCCESS_MESSAGE = "Successfully connected. Happy simracing!";
+        private static readonly string CONNECTION_TEST_SUCCESS_MESSAGE = "Successfully connected. Click Save to Save your settings and connect.";
+
         public SettingsControl()
         {
             InitializeComponent();
-            MQTTSettings setting = new MQTTSettings();
-            txtBroker.Text = setting.GetSetting("mqttserver");
-            txtPort.Text = setting.GetSetting("mqttport");
-            txtUser.Text = setting.GetSetting("mqttuser");
-            txtPassword.Text = setting.GetSetting("mqttpass");
-            txtTopic.Text = setting.GetSetting("mqtttopic");
             settings = MQTTSettings.LoadSettings();
-            ConnectionStatus.Content = MQTTClient.CLIENT.IsConnected ?
-               "Successfully connected. Happy simracing!" :
-               "Connection failed. Please check your settings or broker availability.";
+            txtBroker.Text = settings["mqttserver"];
+            txtPort.Text = settings["mqttport"];
+            txtUser.Text = settings["mqttuser"];
+            txtPassword.Text = settings["mqttpass"];
+            txtTopic.Text = settings["mqtttopic"];
+
+            Dictionary<string, string> MqttSettingsFound = settings
+                .Where(kvp => kvp.Key.IndexOf("mqtt") > -1 && kvp.Value != "")
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+            SimHub.Logging.Current.Info($"Found {MqttSettingsFound.Count} MQTT settings!");
+
+            if (MqttSettingsFound.Count == 0)
+            {
+                ConnectionStatus.Content = "Please provide MQTT settings.";
+            }
+
+            if (MQTTClient.CLIENT != null || MqttSettingsFound.Count > 0)
+            {
+                ConnectionStatus.Content = MQTTClient.CLIENT.IsConnected ?
+                 CONNECTION_SUCCESS_MESSAGE :
+                 CONNECTION_FAILED_MESSAGE;
+            }
         }
         public SettingsControl(MQTTPlugin plugin) : this()
         {
@@ -86,18 +104,25 @@ namespace User.MQTTPlugin
         {
             MQTTSettings.SaveSettings();
             ConnectionStatus.Content = MQTTClient.CLIENT.IsConnected ?
-               "Successfully connected. Happy simracing!" :
-               "Connection failed. Please check your settings or broker availability.";
+               CONNECTION_SUCCESS_MESSAGE :
+               CONNECTION_FAILED_MESSAGE;
         }
 
         private void SHButtonPrimary_Click_1(object sender, RoutedEventArgs e)
         {
-            bool connectionSuccessful = MQTTClient.TestConnection(txtBroker.Text, int.Parse(txtPort.Text), txtUser.Text, txtPassword.Text);
-            ConnectionStatus.Content = connectionSuccessful ?
-                "Successfully connected. Click Save to Save your settings and connect." :
-                "Connection failed. Please check your settings or broker availability.";
-            Properties.Settings.Default["lastConnectionSuccessful"] = connectionSuccessful;
-            btnSave.IsEnabled = connectionSuccessful;
+            try
+            {
+                bool connectionSuccessful = MQTTClient.TestConnection(txtBroker.Text, int.Parse(txtPort.Text), txtUser.Text, txtPassword.Text);
+                ConnectionStatus.Content = connectionSuccessful ?
+                    CONNECTION_TEST_SUCCESS_MESSAGE :
+                    CONNECTION_FAILED_MESSAGE;
+                Properties.Settings.Default["lastConnectionSuccessful"] = connectionSuccessful;
+                btnSave.IsEnabled = connectionSuccessful;
+            }
+            catch (Exception)
+            {
+                ConnectionStatus.Content = CONNECTION_FAILED_MESSAGE;
+            }
         }
 
 

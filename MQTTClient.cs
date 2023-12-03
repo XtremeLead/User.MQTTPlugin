@@ -16,6 +16,7 @@ namespace User.MQTTPlugin
     {
 
         public static MqttClient CLIENT = null;
+        public static bool IsConnected = false;
 
         public static void ConnectMQTT(string broker, int port, string clientId, string username, string password)
         {
@@ -44,10 +45,9 @@ namespace User.MQTTPlugin
             CLIENT = client;
         }
 
-        public static bool IsConnected = false;
         public static bool TestConnection(string broker, int port, string username, string password)
         {
-            if (CLIENT.IsConnected) CLIENT.Disconnect();
+            if (CLIENT != null && CLIENT.IsConnected) CLIENT.Disconnect();
             string clientId = Guid.NewGuid().ToString();
             MqttClient client = new MqttClient(broker, port, false, MqttSslProtocols.None, null, null);
             client.Connect(clientId, username, password);
@@ -67,14 +67,14 @@ namespace User.MQTTPlugin
             }
         }
 
-        public static void Subscribe(MqttClient client, string topic)
+        private static void Subscribe(MqttClient client, string topic)
         {
             client.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
             client.Subscribe(new string[] { topic }, new byte[] { MqttMsgBase.QOS_LEVEL_AT_MOST_ONCE });
         }
-        public static void client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
+        private static void client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
         {
-            string payload = System.Text.Encoding.Default.GetString(e.Message);
+            string payload = Encoding.Default.GetString(e.Message);
             string LogMessage = $"Received MQTT {payload} from topic {e.Topic.ToString()}";
             SimHub.Logging.Current.Info(LogMessage);
 
@@ -89,15 +89,33 @@ namespace User.MQTTPlugin
                 + "\"timestamp\":\"" + timestamp
                 + "\"}";
         }
-
+        public static void Publish(string topic, string message)
+        {
+            if (CLIENT != null && CLIENT.IsConnected)
+            {
+                SimHub.Logging.Current.Info($"Publishing MQTT message '{message}' to topic {topic}");
+                CLIENT.Publish(topic, Encoding.UTF8.GetBytes(message));
+            }
+        }
         public static void ConnectAndSubscribe()
         {
-            string broker = Properties.Settings.Default["mqttserver"].ToString();
-            int port = int.Parse(Properties.Settings.Default["mqttport"].ToString());
-            string topic = Properties.Settings.Default["mqtttopic"].ToString();
-            string username = Properties.Settings.Default["mqttuser"].ToString();
-            string password = Properties.Settings.Default["mqttpass"].ToString();
+            IDictionary<string, string> settings = MQTTSettings.LoadSettings();
+            string broker = settings["mqttserver"];
+            int port = int.Parse(settings["mqttport"]);
+            string topic = settings["mqtttopic"];
+            string username = settings["mqttuser"];
+            string password = settings["mqttpass"];
             string clientId = Guid.NewGuid().ToString();
+
+            Dictionary<string, string> MqttSettingsFound = settings
+                .Where(kvp => kvp.Key.IndexOf("mqtt") > -1 && kvp.Value != "")
+                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+
+            if (MqttSettingsFound.Count == 0)
+            {
+                SimHub.Logging.Current.Info($"Found {MqttSettingsFound.Count} MQTT settings!");
+                return;
+            }
 
             SimHub.Logging.Current.Info($"Connecting MQTT on {broker}.");
             if (CLIENT == null || !CLIENT.IsConnected)

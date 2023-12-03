@@ -30,7 +30,10 @@
                 <styles:SHButtonPrimary HorizontalAlignment="Left" Margin="331,11,4,4" Click="SHButtonPrimary_Click_1">Test Connection</styles:SHButtonPrimary>
                 <styles:SHButtonPrimary x:Name="btnSave" IsEnabled="false" HorizontalAlignment="Left" Click="SHButtonPrimary_Click" Margin="4,-31,4,4">Save</styles:SHButtonPrimary>
                 <Label x:Name="ConnectionStatus" Content="" Height="28"/>
+                <ui:ControlsEditor FriendlyName="Publish test" ActionName="MQTTPlugin.PublishTest"></ui:ControlsEditor>
+                <ListView />
             </StackPanel>
+
         </styles:SHSection>
     </Grid>
 </UserControl>

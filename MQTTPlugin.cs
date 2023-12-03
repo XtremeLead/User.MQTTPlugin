@@ -7,7 +7,7 @@ using System.IO;
 
 namespace User.MQTTPlugin
 {
-    [PluginDescription("Plugin to subscribe to a MQTT topic. Returns JSON object.")]
+    [PluginDescription("Plugin to publish and subscribe to a MQTT topic. Returns a JSON object.")]
     [PluginAuthor("XtremeLead")]
     [PluginName("MQTT plugin")]
     public class MQTTPlugin : IPlugin, IDataPlugin, IWPFSettingsV2
@@ -113,7 +113,16 @@ namespace User.MQTTPlugin
 
 
             // Declare an action which can be called
+            this.AddAction("PublishTest", (a, b) =>
+            {
+                // a = pluginmanager
+                // b = button pressed
 
+                string message = "toggle";
+                string topic = "simhub/commands/light/kantoor";
+                MQTTClient.Publish(topic, message);
+
+            });
 
             // Declare an action which can be called
 
