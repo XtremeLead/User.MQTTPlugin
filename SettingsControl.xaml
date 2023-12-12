@@ -5,17 +5,17 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:User.MQTTPlugin"
              xmlns:styles="clr-namespace:SimHub.Plugins.Styles;assembly=SimHub.Plugins" mc:Ignorable="d" 
-             xmlns:ui="clr-namespace:SimHub.Plugins.UI;assembly=SimHub.Plugins" 
-             d:DesignHeight="300" d:DesignWidth="300">
-
+             xmlns:ui="clr-namespace:SimHub.Plugins.UI;assembly=SimHub.Plugins" Width="491" Height="0" MinHeight="1380"
+             xmlns:data="using.User.MQTTPlugin">
+    <d:DesignerProperties.DesignStyle>
+        <Style TargetType="UserControl">
+            <Setter Property="Background" Value="LightGray" />
+        </Style>
+    </d:DesignerProperties.DesignStyle>
     <Grid>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="55*"/>
-            <ColumnDefinition Width="23*"/>
-            <ColumnDefinition Width="22*"/>
-        </Grid.ColumnDefinitions>
-        <styles:SHSection Title="MQTT PLUGIN OPTIONS" Grid.ColumnSpan="3" Margin="0,0,-200,0">
-            <StackPanel Margin="0,0,0,-25">
+
+        <styles:SHSection Title="MQTT PLUGIN OPTIONS" Grid.ColumnSpan="3" Margin="0,0,0,0">
+            <StackPanel Name="stackPanel" Margin="0,-11,0,-25">
                 <!--<ui:ControlsEditor FriendlyName="Increment Speed Warning" ActionName="MQTTPlugin.IncrementSpeedWarning"></ui:ControlsEditor>-->
                 <Label Content="MQTT Server" HorizontalAlignment="Left" />
                 <TextBox x:Name="txtBroker" Height="24" TextWrapping="Wrap" Text="" Width="348" TextChanged="TextBox_TextChanged" HorizontalAlignment="Left" Margin="102,-24,0,0"/>
@@ -25,15 +25,28 @@
                 <TextBox x:Name="txtUser" Height="24" Width="348" TextWrapping="Wrap" Text="" HorizontalAlignment="Left" Margin="102,-24,0,0" TextChanged="TextBox_TextChanged_2"/>
                 <Label Content="MQTT Password" HorizontalAlignment="Left" />
                 <TextBox x:Name="txtPassword" Height="24" Width="348" TextWrapping="Wrap" Text="" HorizontalAlignment="Left" Margin="102,-24,0,0" TextChanged="TextBox_TextChanged_3"/>
-                <Label Content="MQTT Topic" HorizontalAlignment="Left" />
+                <Label Content="MQTT Sub Topic" HorizontalAlignment="Left" />
                 <TextBox x:Name="txtTopic" Height="24" Width="348" TextWrapping="Wrap" Text="" HorizontalAlignment="Left" Margin="102,-24,0,0" TextChanged="TextBox_TextChanged_4"/>
-                <styles:SHButtonPrimary HorizontalAlignment="Left" Margin="331,11,4,4" Click="SHButtonPrimary_Click_1">Test Connection</styles:SHButtonPrimary>
+                <styles:SHButtonPrimary HorizontalAlignment="Left" Margin="305,11,4,4" Click="SHButtonPrimary_Click_1">Test Connection</styles:SHButtonPrimary>
                 <styles:SHButtonPrimary x:Name="btnSave" IsEnabled="false" HorizontalAlignment="Left" Click="SHButtonPrimary_Click" Margin="4,-31,4,4">Save</styles:SHButtonPrimary>
                 <Label x:Name="ConnectionStatus" Content="" Height="28"/>
-                <ui:ControlsEditor FriendlyName="Publish test" ActionName="MQTTPlugin.PublishTest"></ui:ControlsEditor>
-                <ListView />
-            </StackPanel>
+                <!--<ui:ControlsEditor Name="ControlsEditor" FriendlyName="Publish test" ActionName="MQTTPlugin.PublishTest" Margin="0,0,10,0"></ui:ControlsEditor>-->
 
+                <StackPanel Name="stackPanelActionHeader" Margin="0,50,0,0">
+                    <Label Content="Action name" Margin="0,-25,0,0" HorizontalAlignment="Left" Width="95"/>
+                    <Label Content="Topic" Margin="105,-25,0,0" HorizontalAlignment="Left" Width="95"/>
+                    <Label Content="Message" Margin="210,-25,0,0" HorizontalAlignment="Left" Width="95"/>
+                    <styles:SHButtonPrimary x:Name="btnAddAction" Click="btnAddAction_Click" IsEnabled="True" HorizontalAlignment="Right" Margin="0,-24,0,0" Content="Add"/>
+                </StackPanel>
+                <ScrollViewer Name="ActionsScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Height="0">
+                    <StackPanel Name="stackPanelActions"></StackPanel>
+                </ScrollViewer>
+                <styles:SHButtonPrimary x:Name="btnSaveActions" Visibility="Visible" IsEnabled="True" HorizontalAlignment="Left" Margin="0,20,0,0" Content="Save" Click="btnSaveActions_Click"/>
+
+
+            </StackPanel>
         </styles:SHSection>
+
     </Grid>
+
 </UserControl>

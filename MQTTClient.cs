@@ -8,6 +8,7 @@ using System.IO;
 using uPLibrary.Networking.M2Mqtt.Messages;
 using User.MQTTPlugin;
 using System.Globalization;
+using Newtonsoft.Json;
 
 namespace User.MQTTPlugin
 {
@@ -75,6 +76,15 @@ namespace User.MQTTPlugin
         private static void client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
         {
             string payload = Encoding.Default.GetString(e.Message);
+            object obj = "";
+            try
+            {
+                obj = JsonConvert.DeserializeObject<Dictionary<string, string>>(payload);
+            }
+            catch (Exception)
+            {
+                obj = payload;
+            }
             string LogMessage = $"Received MQTT {payload} from topic {e.Topic.ToString()}";
             SimHub.Logging.Current.Info(LogMessage);
 
@@ -83,11 +93,13 @@ namespace User.MQTTPlugin
             //plugin.MqttMessage = payload;
             DateTime localDate = DateTime.Now;
             string timestamp = localDate.ToString(new CultureInfo("nl-NL"));
-            plugin.MqttMessage = "{"
-                + "\"topic\":\"" + e.Topic.ToString() + "\","
-                + "\"payload\":\"" + payload + "\","
-                + "\"timestamp\":\"" + timestamp
-                + "\"}";
+
+            Dictionary<string, dynamic> dMessage = new Dictionary<string, dynamic>();
+            dMessage.Add("topic", e.Topic.ToString());
+            dMessage.Add("payload", obj);
+            dMessage.Add("timestamp", timestamp);
+            string sMessage = JsonConvert.SerializeObject(dMessage);
+            plugin.MqttMessage = sMessage;
         }
         public static void Publish(string topic, string message)
         {

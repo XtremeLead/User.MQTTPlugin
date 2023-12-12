@@ -16,7 +16,6 @@ namespace User.MQTTPlugin
 
             foreach (SettingsProperty currentProperty in Properties.Settings.Default.Properties)
             {
-                string test = Properties.Settings.Default.mqttport;
                 string name = currentProperty.Name;
                 settings.Add(name, Properties.Settings.Default[name].ToString());
             }

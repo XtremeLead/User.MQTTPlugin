@@ -8,112 +8,102 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace User.MQTTPlugin.Properties
-{
-
-
+namespace User.MQTTPlugin.Properties {
+    
+    
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
     [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "16.10.0.0")]
-    internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase
-    {
-
+    internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
+        
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
-
-        public static Settings Default
-        {
-            get
-            {
+        
+        public static Settings Default {
+            get {
                 return defaultInstance;
             }
         }
-
+        
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string mqttserver
-        {
-            get
-            {
+        public string mqttserver {
+            get {
                 return ((string)(this["mqttserver"]));
             }
-            set
-            {
+            set {
                 this["mqttserver"] = value;
             }
         }
-
+        
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string mqttport
-        {
-            get
-            {
+        public string mqttport {
+            get {
                 return ((string)(this["mqttport"]));
             }
-            set
-            {
+            set {
                 this["mqttport"] = value;
             }
         }
-
+        
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string mqttuser
-        {
-            get
-            {
+        public string mqttuser {
+            get {
                 return ((string)(this["mqttuser"]));
             }
-            set
-            {
+            set {
                 this["mqttuser"] = value;
             }
         }
-
+        
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string mqttpass
-        {
-            get
-            {
+        public string mqttpass {
+            get {
                 return ((string)(this["mqttpass"]));
             }
-            set
-            {
+            set {
                 this["mqttpass"] = value;
             }
         }
-
+        
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string mqtttopic
-        {
-            get
-            {
+        public string mqtttopic {
+            get {
                 return ((string)(this["mqtttopic"]));
             }
-            set
-            {
+            set {
                 this["mqtttopic"] = value;
             }
         }
-
+        
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("False")]
-        public bool lastConnectionSuccessful
-        {
-            get
-            {
+        public bool lastConnectionSuccessful {
+            get {
                 return ((bool)(this["lastConnectionSuccessful"]));
             }
-            set
-            {
+            set {
                 this["lastConnectionSuccessful"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string mqttactions {
+            get {
+                return ((string)(this["mqttactions"]));
+            }
+            set {
+                this["mqttactions"] = value;
             }
         }
     }

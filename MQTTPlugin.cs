@@ -75,6 +75,10 @@ namespace User.MQTTPlugin
         {
             // Save settings
             this.SaveCommonSettings("GeneralSettings", Settings);
+            if (MQTTClient.CLIENT != null)
+            {
+                MQTTClient.CLIENT.Disconnect();
+            }
         }
 
         /// <summary>
@@ -119,14 +123,22 @@ namespace User.MQTTPlugin
                 // b = button pressed
 
                 string message = "toggle";
-                string topic = "simhub/commands/light/kantoor";
+                string topic = "simhub/commands/kantoor/climate";
                 MQTTClient.Publish(topic, message);
 
             });
 
             // Declare an action which can be called
-
         }
+
+        public void AddAction(string name, string topic, string message)
+        {
+            this.AddAction(name, (a, b) =>
+            {
+                MQTTClient.Publish(topic, message);
+            });
+        }
+
 
     }
 }

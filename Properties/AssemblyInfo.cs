@@ -10,7 +10,7 @@ using System.Windows;
 [assembly: AssemblyTitle("User.MQTTPlugin")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("SimHub MQTTPlugin")]
 [assembly: AssemblyProduct("User.MQTTPlugin")]
 [assembly: AssemblyCopyright("Copyright ©  2023")]
 [assembly: AssemblyTrademark("")]
