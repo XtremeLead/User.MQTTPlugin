@@ -2,8 +2,6 @@
 using SimHub.Plugins;
 using System;
 using System.Windows.Media;
-using System.IO;
-
 
 namespace User.MQTTPlugin
 {
