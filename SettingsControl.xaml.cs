@@ -255,7 +255,7 @@ namespace User.MQTTPlugin
             del.Height = 12;
             del.Margin = lastButtonMargin;
             del.Content = "X";
-            del.Click += (sender, EventArgs) => { btnDeleteAction_Click(sender, EventArgs, sp, name); };
+            del.Click += (sender, EventArgs) => { btnDeleteAction_Click(sender, EventArgs, sp, txtActionName.Text); };
 
             sp.Children.Add(txtActionName);
             sp.Children.Add(txtTopic);
@@ -288,8 +288,18 @@ namespace User.MQTTPlugin
         private void btnDeleteAction_Click(object sender, RoutedEventArgs e, StackPanel sp, string name)
         {
             StackPanel parent = sp.Parent as StackPanel;
-            parent.Children.Remove(sp);
-            MessageBox.Show($"dont forget to delete action {name}");
+            int index = parent.Children.IndexOf(sp);
+            parent.Children.RemoveAt(index);
+            // If an action was created, delete it as well
+            if (parent.Children.Count >= index + 1)
+            {
+                var nextSp = parent.Children[index];
+                if (nextSp.GetType().ToString() == "SimHub.Plugins.UI.ControlsEditor")
+                {
+                    parent.Children.RemoveAt(index);
+                }
+                MessageBox.Show($"Don't forget to delete the Control Mapping '{name}' at Controls and events!");
+            }
         }
 
         private void btnSaveActions_Click(object sender, RoutedEventArgs e)
