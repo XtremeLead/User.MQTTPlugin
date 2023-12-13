@@ -28,14 +28,11 @@ namespace User.MQTTPlugin
         {
             try
             {
-                // Encrypt the data using DataProtectionScope.CurrentUser. The result can be decrypted
-                // only by the same current user.
                 return ProtectedData.Protect(data, Entropy, DataProtectionScope.CurrentUser);
             }
-            catch (CryptographicException e)
+            catch (CryptographicException)
             {
-                Console.WriteLine("Data was not encrypted. An error occurred.");
-                Console.WriteLine(e.ToString());
+                SimHub.Logging.Current.Info("Failed to encrypt MQTT password!");
                 return null;
             }
         }
@@ -44,13 +41,11 @@ namespace User.MQTTPlugin
         {
             try
             {
-                //Decrypt the data using DataProtectionScope.CurrentUser.
                 return ProtectedData.Unprotect(data, Entropy, DataProtectionScope.CurrentUser);
             }
-            catch (CryptographicException e)
+            catch (CryptographicException)
             {
-                Console.WriteLine("Data was not decrypted. An error occurred.");
-                Console.WriteLine(e.ToString());
+                SimHub.Logging.Current.Info("Failed to decrypt MQTT password!");
                 return null;
             }
         }
