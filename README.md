@@ -2,9 +2,13 @@
 
 MQTT Plugin is a SimHub plugin that allows you to show MQTT data on your dashboard and also send data to your MQTT broker via SimHub Actions.
 
-## Installation
-
-Place the dll file in your SimHub installation folder.
+## Installation/Building
+Make sure to have a recent MsBuild installed (ToolsVersion 15 or later). You can downoad it from https://aka.ms/vs/17/release/vs_BuildTools.exe or at https://visualstudio.microsoft.com/downloads/ and look for 'Build Tools for Visual Studio'.
+From a Powershell window, run the following command (adjust the location of MsBuild.exe if needed):
+```
+ & 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe' .\User.MQTTPlugin.csproj
+ ```
+ The dll will be directly copied into your SimHub folder (C:\Program Files (x86)\SimHub).
 
 ## Usage
 
@@ -23,14 +27,6 @@ Use JavaScript in your Dashboard to extract the data from this object.
 const message = JSON.parse($prop('MQTTPlugin.MQTTMessage'));
 if(message.topic == 'my/mqtt/topic') return message.payload.key;
 ```
-
-## Installation/Building
-Make sure to have a recent MsBuild installed (ToolsVersion 15 or later). You can downoad it from https://aka.ms/vs/17/release/vs_BuildTools.exe or at https://visualstudio.microsoft.com/downloads/ and look for 'Build Tools for Visual Studio'.
-From a Powershell window, run the following command (adjust the location of MsBuild.exe if needed):
-```
- & 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe' .\User.MQTTPlugin.csproj
- ```
- The dll will be directly copied into your SimHub folder (C:\Program Files (x86)\SimHub).
 
 ## Contributing
 
