@@ -7,6 +7,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Xml;
+using System.Text;
 
 namespace User.MQTTPlugin
 {
@@ -31,8 +32,16 @@ namespace User.MQTTPlugin
             txtBroker.Text = settings["mqttserver"];
             txtPort.Text = settings["mqttport"];
             txtUser.Text = settings["mqttuser"];
-            txtPassword.Text = settings["mqttpass"];
             txtTopic.Text = settings["mqtttopic"];
+            try
+            {
+                txtPassword.Text = Crypt.UnprotectString(settings["mqttpass"]);
+            }
+            catch (Exception)
+            {
+                txtPassword.Text = "";
+            }
+
             if (settings["mqttactions"] != "")
             {
                 try
@@ -137,6 +146,10 @@ namespace User.MQTTPlugin
             if (textBox != null)
             {
                 string value = textBox.Text;
+                if (key == "mqttpass")
+                {
+                    value = Crypt.ProtectString(value);
+                }
                 MQTTSettings.RememberSetting(key, value);
             }
         }

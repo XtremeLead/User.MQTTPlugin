@@ -113,7 +113,15 @@ namespace User.MQTTPlugin
             int port = int.Parse(settings["mqttport"]);
             string topic = settings["mqtttopic"];
             string username = settings["mqttuser"];
-            string password = settings["mqttpass"];
+            string password = "";
+            try
+            {
+                password = Crypt.UnprotectString(settings["mqttpass"]);
+            }
+            catch (Exception)
+            {
+
+            }
             string clientId = Guid.NewGuid().ToString();
 
             Dictionary<string, string> MqttSettingsFound = settings
