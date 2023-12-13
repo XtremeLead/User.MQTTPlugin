@@ -1,6 +1,6 @@
 # MQTT Plugin
 
-MQTT Plugin is a SimHub plugin that allows you to show MQTT data on your dashboard and also send data to your MQTT broker via SimHub Actions.
+MQTT Plugin is a SimHub plugin that allows you to show MQTT data on your dashboard and also send data to your MQTT broker via SimHub Actions/Button Mappings.
 
 ## Installation/Building
 Make sure to have a recent MsBuild installed (ToolsVersion 15 or later). You can downoad it from https://aka.ms/vs/17/release/vs_BuildTools.exe or at https://visualstudio.microsoft.com/downloads/ and look for 'Build Tools for Visual Studio'.
