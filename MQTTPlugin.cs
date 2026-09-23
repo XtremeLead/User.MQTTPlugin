@@ -12,6 +12,8 @@ namespace User.MQTTPlugin
     {
         public MQTTPluginSettings Settings;
 
+        public static MQTTPlugin Instance { get; private set; }
+
         /// <summary>
         /// Instance of the current plugin manager
         /// </summary>
@@ -77,6 +79,11 @@ namespace User.MQTTPlugin
             {
                 MQTTClient.CLIENT.Disconnect();
             }
+
+            if(Instance == this)
+            {
+                Instance = null;
+            }
         }
 
         /// <summary>
@@ -97,6 +104,8 @@ namespace User.MQTTPlugin
         public void Init(PluginManager pluginManager)
         {
             SimHub.Logging.Current.Info("Starting plugin");
+
+            Instance = this;
 
             if ((bool)Properties.Settings.Default["lastConnectionSuccessful"])
             {
