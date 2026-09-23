@@ -73,7 +73,7 @@ namespace User.MQTTPlugin
         private static void client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
         {
             string payload = Encoding.Default.GetString(e.Message);
-            object obj = "";
+            object obj;
             try
             {
                 obj = JsonConvert.DeserializeObject<Dictionary<string, string>>(payload);
@@ -82,11 +82,11 @@ namespace User.MQTTPlugin
             {
                 obj = payload;
             }
-            string LogMessage = $"Received MQTT {payload} from topic {e.Topic.ToString()}";
+            string LogMessage = $"Received MQTT {payload} from topic {e.Topic}";
             SimHub.Logging.Current.Info(LogMessage);
 
 
-            MQTTPlugin plugin = new MQTTPlugin();
+            //MQTTPlugin plugin = new MQTTPlugin();
             //plugin.MqttMessage = payload;
             DateTime localDate = DateTime.Now;
             string timestamp = localDate.ToString(new CultureInfo("nl-NL"));
@@ -96,7 +96,15 @@ namespace User.MQTTPlugin
             dMessage.Add("payload", obj);
             dMessage.Add("timestamp", timestamp);
             string sMessage = JsonConvert.SerializeObject(dMessage);
-            plugin.MqttMessage = sMessage;
+            //plugin.MqttMessage = sMessage;
+            if (MQTTPlugin.Instance != null)
+            {
+                MQTTPlugin.Instance.MqttMessage = sMessage;
+            }
+            else
+            {
+                SimHub.Logging.Current.Info("Received MQTT message but no active MQTTPlugin instance to update.");
+            }
         }
         public static void Publish(string topic, string message)
         {
