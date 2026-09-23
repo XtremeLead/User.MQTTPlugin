@@ -24,8 +24,10 @@ namespace User.MQTTPlugin
         private static readonly string CONNECTION_TEST_SUCCESS_MESSAGE = "Successfully connected. Click Save to Save your settings and connect.";
         private Dictionary<string, ValueTuple<string, string>> ActionsToStore = new Dictionary<string, ValueTuple<string, string>>();
 
-        public SettingsControl()
+        public SettingsControl() : this(MQTTPlugin.Instance) { }
+        public SettingsControl(MQTTPlugin plugin)
         {
+            Plugin = plugin;
             InitializeComponent();
 
             settings = MQTTSettings.LoadSettings();
@@ -72,8 +74,9 @@ namespace User.MQTTPlugin
                         stackPanelActions.Children.Add(controlsEditor);
                         btnSaveActions.Visibility = Visibility.Visible;
 
-                        MQTTPlugin plugin = new MQTTPlugin();
-                        plugin.AddAction(name, topic, message);
+                        //MQTTPlugin plugin = new MQTTPlugin();
+                        //plugin.AddAction(name, topic, message);
+                        Plugin?.AddAction(name, topic, message);
 
                         index++;
                     }
@@ -105,10 +108,10 @@ namespace User.MQTTPlugin
                  CONNECTION_FAILED_MESSAGE;
             }
         }
-        public SettingsControl(MQTTPlugin plugin) : this()
-        {
-            Plugin = plugin;
-        }
+        //public SettingsControl(MQTTPlugin plugin) : this()
+        //{
+        //    Plugin = plugin;
+        //}
 
         private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
@@ -281,8 +284,9 @@ namespace User.MQTTPlugin
 
             spButtonGrandParent.Children.Insert(index + 1, controlsEditor);
 
-            MQTTPlugin plugin = new MQTTPlugin();
-            plugin.AddAction(action, topic, message);
+            //MQTTPlugin plugin = new MQTTPlugin();
+            //plugin.AddAction(action, topic, message);
+            Plugin?.AddAction(action, topic, message);
         }
 
         private void btnDeleteAction_Click(object sender, RoutedEventArgs e, StackPanel sp, string name)
