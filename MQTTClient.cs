@@ -6,6 +6,7 @@ using uPLibrary.Networking.M2Mqtt;
 using uPLibrary.Networking.M2Mqtt.Messages;
 using System.Globalization;
 using Newtonsoft.Json;
+using System.Threading.Tasks;
 
 namespace User.MQTTPlugin
 {
@@ -51,26 +52,59 @@ namespace User.MQTTPlugin
             CLIENT = client;
         }
 
-        public static bool TestConnection(string broker, int port, string username, string password)
+        public static Task<bool> TestConnectionAsync(string broker, int port, string username, string password)
         {
             if (CLIENT != null && CLIENT.IsConnected) CLIENT.Disconnect();
-            string clientId = Guid.NewGuid().ToString();
-            MqttClient client = new MqttClient(broker, port, false, MqttSslProtocols.None, null, null);
-            client.Connect(clientId, username, password);
-            IsConnected = client.IsConnected;
-            Properties.Settings.Default["lastConnectionSuccessful"] = client.IsConnected;
-            if (client.IsConnected)
+            //string clientId = Guid.NewGuid().ToString();
+            //MqttClient client = new MqttClient(broker, port, false, MqttSslProtocols.None, null, null);
+            //client.Connect(clientId, username, password);
+            //IsConnected = client.IsConnected;
+            //Properties.Settings.Default["lastConnectionSuccessful"] = client.IsConnected;
+            //if (client.IsConnected)
+            //{
+            //    SimHub.Logging.Current.Info($"Connection test to connect to MQTT Broker {broker} succeeded. Disconnecting...");
+            //    client.Disconnect();
+            //    return true;
+            //}
+            //else
+            //{
+            //    SimHub.Logging.Current.Info($"Connection test to connect to MQTT Broker {broker} failed.");
+            //    client.Disconnect();
+            //    return false;
+            //}
+            return Task.Run(() =>
             {
-                SimHub.Logging.Current.Info($"Connection test to connect to MQTT Broker {broker} succeeded. Disconnecting...");
-                client.Disconnect();
-                return true;
-            }
-            else
-            {
-                SimHub.Logging.Current.Info($"Connection test to connect to MQTT Broker {broker} failed.");
-                client.Disconnect();
-                return false;
-            }
+                string clientId = Guid.NewGuid().ToString();
+
+                MqttClient client = new MqttClient(broker, port, false, MqttSslProtocols.None, null, null);
+
+                try
+                {
+                    client.Connect(clientId, username, password);
+                }
+                catch (Exception e)
+                {
+                    SimHub.Logging.Current.Info($"Connection test to connect to MQTT Broker {broker} failed. {e.InnerException?.Message ?? e.Message}");
+                    Properties.Settings.Default["lastConnectionSuccessful"] = false;
+                    return false;
+                }
+
+                IsConnected = client.IsConnected;
+                Properties.Settings.Default["lastConnectionSuccessful"] = client.IsConnected;
+                if (client.IsConnected)
+                {
+                    SimHub.Logging.Current.Info($"Connection test to connect to MQTT Broker {broker} succeeded. Disconnecting...");
+                    client.Disconnect();
+                    return true;
+                }
+                else
+                {
+                    SimHub.Logging.Current.Info($"Connection test to connect to MQTT Broker {broker} failed.");
+                    client.Disconnect();
+                    return false;
+                }
+            });
+
         }
 
         private static void Subscribe(MqttClient client, string topic)
@@ -158,6 +192,17 @@ namespace User.MQTTPlugin
             {
                 Subscribe(CLIENT, topic);
             }
+
+
+        }
+        /// <summary>
+        /// Runs ConnectAndSubscribe() on a background thread so callers
+        /// (e.g. UI event handlers) never block on the underlying blocking
+        /// MqttClient.Connect() call.
+        /// </summary>
+        public static Task ConnectAndSubscribeAsync()
+        {
+            return Task.Run(() => ConnectAndSubscribe());
         }
 
     }

@@ -157,19 +157,57 @@ namespace User.MQTTPlugin
             }
         }
 
-        private void SHButtonPrimary_Click(object sender, RoutedEventArgs e)
+        private async void SHButtonPrimary_Click(object sender, RoutedEventArgs e)
         {
-            MQTTSettings.SaveSettings();
-            ConnectionStatus.Content = MQTTClient.CLIENT.IsConnected ?
-               CONNECTION_SUCCESS_MESSAGE :
-               CONNECTION_FAILED_MESSAGE;
-        }
+            btnSave.IsEnabled = false;
+            ConnectionStatus.Content = "Connecting...";
 
-        private void SHButtonPrimary_Click_1(object sender, RoutedEventArgs e)
-        {
+            await MQTTSettings.SaveSettingsAsync();
+
+            //ConnectionStatus.Content = (MQTTClient.CLIENT != null && MQTTClient.CLIENT.IsConnected) ?
+            //    CONNECTION_SUCCESS_MESSAGE :
+            //    CONNECTION_FAILED_MESSAGE;
+
+            bool isConnected;
             try
             {
-                bool connectionSuccessful = MQTTClient.TestConnection(txtBroker.Text, int.Parse(txtPort.Text), txtUser.Text, txtPassword.Text);
+                isConnected = MQTTClient.CLIENT != null && MQTTClient.CLIENT.IsConnected;
+            }
+            catch (ObjectDisposedException)
+            {
+                isConnected = false;
+            }
+            ConnectionStatus.Content = isConnected ? CONNECTION_SUCCESS_MESSAGE : CONNECTION_FAILED_MESSAGE;
+
+            btnSave.IsEnabled = true;
+        }
+
+        private async void SHButtonPrimary_Click_1(object sender, RoutedEventArgs e)
+        {
+            //try
+            //{
+            //    bool connectionSuccessful = MQTTClient.TestConnection(txtBroker.Text, int.Parse(txtPort.Text), txtUser.Text, txtPassword.Text);
+            //    ConnectionStatus.Content = connectionSuccessful ?
+            //        CONNECTION_TEST_SUCCESS_MESSAGE :
+            //        CONNECTION_FAILED_MESSAGE;
+            //    Properties.Settings.Default["lastConnectionSuccessful"] = connectionSuccessful;
+            //    btnSave.IsEnabled = connectionSuccessful;
+            //}
+            //catch (Exception)
+            //{
+            //    ConnectionStatus.Content = CONNECTION_FAILED_MESSAGE;
+            //}
+            if (!int.TryParse(txtPort.Text, out int port))
+            {
+                ConnectionStatus.Content = "Invalid port.";
+                return;
+            }
+
+            ConnectionStatus.Content = "Testing connection...";
+
+            try
+            {
+                bool connectionSuccessful = await MQTTClient.TestConnectionAsync(txtBroker.Text, port, txtUser.Text, txtPassword.Text);
                 ConnectionStatus.Content = connectionSuccessful ?
                     CONNECTION_TEST_SUCCESS_MESSAGE :
                     CONNECTION_FAILED_MESSAGE;
@@ -180,6 +218,7 @@ namespace User.MQTTPlugin
             {
                 ConnectionStatus.Content = CONNECTION_FAILED_MESSAGE;
             }
+
         }
 
 

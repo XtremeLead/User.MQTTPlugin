@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Configuration;
+using System.Threading.Tasks;
 
 namespace User.MQTTPlugin
 {
@@ -28,16 +29,16 @@ namespace User.MQTTPlugin
             return Properties.Settings.Default[key].ToString();
         }
 
-        public static void SaveSettings()
+        public static Task SaveSettingsAsync()
         {
-            foreach (var item in SETTINGS)
+            foreach (KeyValuePair<string, string> item in SETTINGS)
             {
                 Properties.Settings.Default[item.Key] = item.Value;
             }
             Properties.Settings.Default.Save();
 
             // Settings have been tested, so connect
-            MQTTClient.ConnectAndSubscribe();
+            return MQTTClient.ConnectAndSubscribeAsync();
         }
     }
 }
