@@ -80,7 +80,7 @@ namespace User.MQTTPlugin
                 MQTTClient.CLIENT.Disconnect();
             }
 
-            if(Instance == this)
+            if (Instance == this)
             {
                 Instance = null;
             }

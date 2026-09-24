@@ -18,7 +18,15 @@ namespace User.MQTTPlugin
 
         public static void ConnectMQTT(string broker, int port, string clientId, string username, string password)
         {
+
+            if (CLIENT != null && CLIENT.IsConnected)
+            {
+                CLIENT.Disconnect();
+            }
+
             MqttClient client = new MqttClient(broker, port, false, MqttSslProtocols.None, null, null);
+            client.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
+
             try
             {
                 client.Connect(clientId, username, password);
@@ -26,7 +34,7 @@ namespace User.MQTTPlugin
             catch (Exception e)
             {
                 Properties.Settings.Default["lastConnectionSuccessful"] = false;
-                SimHub.Logging.Current.Info($"Failed to connect to MQTT Broker {broker}. {e.InnerException.Message}");
+                SimHub.Logging.Current.Info($"Failed to connect to MQTT Broker {broker}. {e.InnerException?.Message ?? e.Message}");
                 //throw;
             }
 
@@ -67,7 +75,6 @@ namespace User.MQTTPlugin
 
         private static void Subscribe(MqttClient client, string topic)
         {
-            client.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
             client.Subscribe(new string[] { topic }, new byte[] { MqttMsgBase.QOS_LEVEL_AT_MOST_ONCE });
         }
         private static void client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
@@ -147,7 +154,10 @@ namespace User.MQTTPlugin
             {
                 ConnectMQTT(broker, port, clientId, username, password);
             }
-            Subscribe(CLIENT, topic);
+            if (CLIENT != null && CLIENT.IsConnected)
+            {
+                Subscribe(CLIENT, topic);
+            }
         }
 
     }
