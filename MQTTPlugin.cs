@@ -105,7 +105,10 @@ namespace User.MQTTPlugin
         /// <returns></returns>
         public System.Windows.Controls.Control GetWPFSettingsControl(PluginManager pluginManager)
         {
-            return new SettingsControl(this);
+            const bool useRedesignedSettingsUI = true;
+            return useRedesignedSettingsUI
+                ? (System.Windows.Controls.Control)new SettingsControlV2(this)
+                : new SettingsControl(this);
         }
 
         /// <summary>
