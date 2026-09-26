@@ -35,6 +35,7 @@ namespace User.MQTTPlugin
             txtPort.Text = settings["mqttport"];
             txtUser.Text = settings["mqttuser"];
             txtTopic.Text = settings["mqtttopic"];
+            chkUseTls.IsChecked = settings.TryGetValue("mqtttls", out string tlsValue) && tlsValue == "True";
             try
             {
                 txtPassword.Text = Crypt.UnprotectString(settings["mqttpass"]);
@@ -139,6 +140,21 @@ namespace User.MQTTPlugin
             StoreInSettings("mqtttopic", sender);
         }
 
+        private void chkUseTls_Changed(object sender, RoutedEventArgs e)
+        {
+            MQTTSettings.RememberSetting("mqtttls", chkUseTls.IsChecked == true ? "True" : "False");
+
+            // Suggest the conventional TLS port if the user hasn't customized it yet.
+            if (chkUseTls.IsChecked == true && txtPort.Text == "1883")
+            {
+                txtPort.Text = "8883";
+            }
+            else if (chkUseTls.IsChecked == false && txtPort.Text == "8883")
+            {
+                txtPort.Text = "1883";
+            }
+        }
+
         private void StoreInSettings(string key, object sender)
         {
             if (btnSave != null)
@@ -207,7 +223,8 @@ namespace User.MQTTPlugin
 
             try
             {
-                bool connectionSuccessful = await MQTTClient.TestConnectionAsync(txtBroker.Text, port, txtUser.Text, txtPassword.Text);
+                bool useTls = chkUseTls.IsChecked == true;
+                bool connectionSuccessful = await MQTTClient.TestConnectionAsync(txtBroker.Text, port, txtUser.Text, txtPassword.Text, useTls);
                 ConnectionStatus.Content = connectionSuccessful ?
                     CONNECTION_TEST_SUCCESS_MESSAGE :
                     CONNECTION_FAILED_MESSAGE;

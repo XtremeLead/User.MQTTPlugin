@@ -28,7 +28,7 @@ namespace User.MQTTPlugin
         // Backoff schedule in seconds; caps out and repeats at the last value.
         private static readonly int[] BackoffSchedule = { 2, 5, 10, 30, 60 };
 
-        public static void ConnectMQTT(string broker, int port, string clientId, string username, string password)
+        public static void ConnectMQTT(string broker, int port, string clientId, string username, string password, bool useTls = false)
         {
             lock (ClientLock)
             {
@@ -37,7 +37,13 @@ namespace User.MQTTPlugin
                     CLIENT.Disconnect();
                 }
 
-                MqttClient client = new MqttClient(broker, port, false, MqttSslProtocols.None, null, null);
+                MqttClient client = new MqttClient(broker,
+                    port,
+                    useTls,
+                    useTls ? MqttSslProtocols.TLSv1_2 : MqttSslProtocols.None,
+                    null,
+                    null);
+
                 client.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
                 client.ConnectionClosed += client_ConnectionClosed;
 
@@ -73,31 +79,21 @@ namespace User.MQTTPlugin
             SimHub.Logging.Current.Info("MQTT connection closed unexpectedly.");
         }
 
-        public static Task<bool> TestConnectionAsync(string broker, int port, string username, string password)
+        public static Task<bool> TestConnectionAsync(string broker, int port, string username, string password, bool useTls = false)
         {
             if (CLIENT != null && CLIENT.IsConnected) CLIENT.Disconnect();
-            //string clientId = Guid.NewGuid().ToString();
-            //MqttClient client = new MqttClient(broker, port, false, MqttSslProtocols.None, null, null);
-            //client.Connect(clientId, username, password);
-            //IsConnected = client.IsConnected;
-            //Properties.Settings.Default["lastConnectionSuccessful"] = client.IsConnected;
-            //if (client.IsConnected)
-            //{
-            //    SimHub.Logging.Current.Info($"Connection test to connect to MQTT Broker {broker} succeeded. Disconnecting...");
-            //    client.Disconnect();
-            //    return true;
-            //}
-            //else
-            //{
-            //    SimHub.Logging.Current.Info($"Connection test to connect to MQTT Broker {broker} failed.");
-            //    client.Disconnect();
-            //    return false;
-            //}
+
             return Task.Run(() =>
             {
                 string clientId = Guid.NewGuid().ToString();
 
-                MqttClient client = new MqttClient(broker, port, false, MqttSslProtocols.None, null, null);
+                MqttClient client = new MqttClient(
+                    broker,
+                    port,
+                    useTls,
+                    useTls ? MqttSslProtocols.TLSv1_2 : MqttSslProtocols.None,
+                    null,
+                    null);
 
                 try
                 {
@@ -190,6 +186,7 @@ namespace User.MQTTPlugin
             string topic = settings["mqtttopic"];
             string username = settings["mqttuser"];
             string password = "";
+            bool useTls = settings.TryGetValue("mqtttls", out string tlsValue) && tlsValue == "True";
             try
             {
                 password = Crypt.UnprotectString(settings["mqttpass"]);
@@ -213,7 +210,7 @@ namespace User.MQTTPlugin
             SimHub.Logging.Current.Info($"Connecting MQTT on {broker}.");
             if (CLIENT == null || !CLIENT.IsConnected)
             {
-                ConnectMQTT(broker, port, clientId, username, password);
+                ConnectMQTT(broker, port, clientId, username, password, useTls);
             }
             if (CLIENT != null && CLIENT.IsConnected)
             {

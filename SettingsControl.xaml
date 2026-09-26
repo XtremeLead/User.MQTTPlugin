@@ -21,6 +21,7 @@
                 <TextBox x:Name="txtBroker" Height="24" TextWrapping="Wrap" Text="" Width="348" TextChanged="TextBox_TextChanged" HorizontalAlignment="Left" Margin="102,-24,0,0"/>
                 <Label Content="MQTT Port" HorizontalAlignment="Left" />
                 <TextBox x:Name="txtPort" Height="23" Width="348" TextWrapping="Wrap" Text="1883" KeyDown="txtPort_KeyDown" TextChanged="TextBox_TextChanged_1"  HorizontalAlignment="Left" Margin="102,-24,0,0"/>
+                <CheckBox x:Name="chkUseTls" Content="Use TLS/SSL" Checked="chkUseTls_Changed" Unchecked="chkUseTls_Changed" HorizontalAlignment="Left" Margin="102,0,0,0" />
                 <Label Content="MQTT User" HorizontalAlignment="Left" />
                 <TextBox x:Name="txtUser" Height="24" Width="348" TextWrapping="Wrap" Text="" HorizontalAlignment="Left" Margin="102,-24,0,0" TextChanged="TextBox_TextChanged_2"/>
                 <Label Content="MQTT Password" HorizontalAlignment="Left" />

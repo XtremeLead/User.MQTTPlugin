@@ -106,5 +106,17 @@ namespace User.MQTTPlugin.Properties {
                 this["mqttactions"] = value;
             }
         }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool mqtttls {
+            get {
+                return ((bool)(this["mqtttls"]));
+            }
+            set {
+                this["mqtttls"] = value;
+            }
+        }
     }
 }
