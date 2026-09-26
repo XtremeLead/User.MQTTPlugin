@@ -73,11 +73,23 @@ namespace User.MQTTPlugin
         /// <param name="pluginManager"></param>
         public void End(PluginManager pluginManager)
         {
+            MQTTClient.StopWatchdog();
+
             // Save settings
             this.SaveCommonSettings("GeneralSettings", Settings);
-            if (MQTTClient.CLIENT != null)
+            try
             {
-                MQTTClient.CLIENT.Disconnect();
+                lock (MQTTClient.ClientLock)
+                {
+                    if (MQTTClient.CLIENT != null && MQTTClient.CLIENT.IsConnected)
+                    {
+                        MQTTClient.CLIENT.Disconnect();
+                    }
+                }
+            }
+            catch (Exception e)
+            {
+                SimHub.Logging.Current.Info($"Error while disconnecting MQTT client during shutdown: {e.Message}");
             }
 
             if (Instance == this)
@@ -111,6 +123,8 @@ namespace User.MQTTPlugin
             {
                 MQTTClient.ConnectAndSubscribe();
             }
+
+            MQTTClient.StartWatchdog();
 
             // Load settings
             Settings = this.ReadCommonSettings<MQTTPluginSettings>("GeneralSettings", () => new MQTTPluginSettings());
