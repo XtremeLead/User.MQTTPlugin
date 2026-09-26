@@ -38,11 +38,11 @@ namespace User.MQTTPlugin
             chkUseTls.IsChecked = settings.TryGetValue("mqtttls", out string tlsValue) && tlsValue == "True";
             try
             {
-                txtPassword.Text = Crypt.UnprotectString(settings["mqttpass"]);
+                txtPassword.Password = Crypt.UnprotectString(settings["mqttpass"]);
             }
             catch (Exception)
             {
-                txtPassword.Text = "";
+                txtPassword.Password = "";
             }
 
             if (settings["mqttactions"] != "")
@@ -130,9 +130,15 @@ namespace User.MQTTPlugin
             StoreInSettings("mqttuser", sender);
         }
 
-        private void TextBox_TextChanged_3(object sender, TextChangedEventArgs e)
+        private void PasswordBox_TextChanged_3(object sender, RoutedEventArgs e)
         {
-            StoreInSettings("mqttpass", sender);
+            PasswordBox passwordBox = sender as PasswordBox;
+            if (passwordBox != null)
+            {
+                if (btnSave != null) btnSave.IsEnabled = false;
+                string encrypted = Crypt.ProtectString(passwordBox.Password);
+                MQTTSettings.RememberSetting("mqttpass", encrypted);
+            }
         }
 
         private void TextBox_TextChanged_4(object sender, TextChangedEventArgs e)
@@ -224,7 +230,7 @@ namespace User.MQTTPlugin
             try
             {
                 bool useTls = chkUseTls.IsChecked == true;
-                bool connectionSuccessful = await MQTTClient.TestConnectionAsync(txtBroker.Text, port, txtUser.Text, txtPassword.Text, useTls);
+                bool connectionSuccessful = await MQTTClient.TestConnectionAsync(txtBroker.Text, port, txtUser.Text, txtPassword.Password, useTls);
                 ConnectionStatus.Content = connectionSuccessful ?
                     CONNECTION_TEST_SUCCESS_MESSAGE :
                     CONNECTION_FAILED_MESSAGE;

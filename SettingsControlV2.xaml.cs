@@ -38,11 +38,11 @@ namespace User.MQTTPlugin
 
             try
             {
-                txtPassword.Text = Crypt.UnprotectString(settings["mqttpass"]);
+                txtPassword.Password = Crypt.UnprotectString(settings["mqttpass"]);
             }
             catch (Exception)
             {
-                txtPassword.Text = "";
+                txtPassword.Password = "";
             }
 
             LoadExistingActions();
@@ -95,7 +95,16 @@ namespace User.MQTTPlugin
         private void TextBox_TextChanged(object sender, TextChangedEventArgs e) => StoreInSettings("mqttserver", sender);
         private void TextBox_TextChanged_1(object sender, TextChangedEventArgs e) => StoreInSettings("mqttport", sender);
         private void TextBox_TextChanged_2(object sender, TextChangedEventArgs e) => StoreInSettings("mqttuser", sender);
-        private void TextBox_TextChanged_3(object sender, TextChangedEventArgs e) => StoreInSettings("mqttpass", sender);
+        private void PasswordBox_TextChanged_3(object sender, RoutedEventArgs e)
+        {
+            PasswordBox passwordBox = sender as PasswordBox;
+            if (passwordBox != null)
+            {
+                if (btnSave != null) btnSave.IsEnabled = false;
+                string encrypted = Crypt.ProtectString(passwordBox.Password);
+                MQTTSettings.RememberSetting("mqttpass", encrypted);
+            }
+        }
         private void TextBox_TextChanged_4(object sender, TextChangedEventArgs e) => StoreInSettings("mqtttopic", sender);
 
         private void chkUseTls_Changed(object sender, RoutedEventArgs e)
@@ -141,7 +150,7 @@ namespace User.MQTTPlugin
             try
             {
                 bool useTls = chkUseTls.IsChecked == true;
-                bool connectionSuccessful = await MQTTClient.TestConnectionAsync(txtBroker.Text, port, txtUser.Text, txtPassword.Text, useTls);
+                bool connectionSuccessful = await MQTTClient.TestConnectionAsync(txtBroker.Text, port, txtUser.Text, txtPassword.Password, useTls);
                 ConnectionStatus.Content = connectionSuccessful ? CONNECTION_TEST_SUCCESS_MESSAGE : CONNECTION_FAILED_MESSAGE;
                 Properties.Settings.Default["lastConnectionSuccessful"] = connectionSuccessful;
                 btnSave.IsEnabled = connectionSuccessful;

@@ -25,7 +25,7 @@
                 <Label Content="MQTT User" HorizontalAlignment="Left" />
                 <TextBox x:Name="txtUser" Height="24" Width="348" TextWrapping="Wrap" Text="" HorizontalAlignment="Left" Margin="102,-24,0,0" TextChanged="TextBox_TextChanged_2"/>
                 <Label Content="MQTT Password" HorizontalAlignment="Left" />
-                <TextBox x:Name="txtPassword" Height="24" Width="348" TextWrapping="Wrap" Text="" HorizontalAlignment="Left" Margin="102,-24,0,0" TextChanged="TextBox_TextChanged_3"/>
+                <PasswordBox x:Name="txtPassword" Height="24" Width="348" HorizontalAlignment="Left" Margin="102,-24,0,0" PasswordChanged="PasswordBox_TextChanged_3"/>
                 <Label Content="MQTT Sub Topic" HorizontalAlignment="Left" />
                 <TextBox x:Name="txtTopic" Height="24" Width="348" TextWrapping="Wrap" Text="" HorizontalAlignment="Left" Margin="102,-24,0,0" TextChanged="TextBox_TextChanged_4"/>
                 <styles:SHButtonPrimary HorizontalAlignment="Left" Margin="305,11,4,4" Click="SHButtonPrimary_Click_1">Test Connection</styles:SHButtonPrimary>
