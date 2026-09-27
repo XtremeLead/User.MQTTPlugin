@@ -6,6 +6,7 @@ using uPLibrary.Networking.M2Mqtt;
 using uPLibrary.Networking.M2Mqtt.Messages;
 using System.Globalization;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System.Threading.Tasks;
 using System.Threading;
 using System.Timers;
@@ -134,7 +135,7 @@ namespace User.MQTTPlugin
             object obj;
             try
             {
-                obj = JsonConvert.DeserializeObject<Dictionary<string, string>>(payload);
+                obj = JToken.Parse(payload);
             }
             catch (Exception)
             {
