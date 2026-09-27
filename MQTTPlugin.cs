@@ -122,11 +122,8 @@ namespace User.MQTTPlugin
 
             Instance = this;
 
-            if ((bool)Properties.Settings.Default["lastConnectionSuccessful"])
-            {
-                MQTTClient.ConnectAndSubscribe();
-            }
-
+            // always try to connect
+            MQTTClient.ConnectAndSubscribe();
             MQTTClient.StartWatchdog();
 
             // Load settings
