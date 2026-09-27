@@ -14,7 +14,7 @@ namespace User.MQTTPlugin
 
         public static string ProtectString(string value)
         {
-            byte[] secret = Encoding.ASCII.GetBytes(value);
+            byte[] secret = Encoding.UTF8.GetBytes(value);
             byte[] encryptedSecret = Protect(secret);
             return Convert.ToBase64String(encryptedSecret);
         }
@@ -22,7 +22,7 @@ namespace User.MQTTPlugin
         {
             byte[] secret = Convert.FromBase64String(value);
             byte[] originalData = Unprotect(secret);
-            return Encoding.ASCII.GetString(originalData);
+            return Encoding.UTF8.GetString(originalData);
         }
         private static byte[] Protect(byte[] data)
         {
