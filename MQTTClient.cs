@@ -23,7 +23,6 @@ namespace User.MQTTPlugin
         private static System.Timers.Timer watchdogTimer;
         private static int reconnectAttempt = 0;
         private static bool reconnecting = false;
-        private static string lastTopic = null;
 
         // Backoff schedule in seconds; caps out and repeats at the last value.
         private static readonly int[] BackoffSchedule = { 2, 5, 10, 30, 60 };
