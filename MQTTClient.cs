@@ -182,7 +182,11 @@ namespace User.MQTTPlugin
         {
             IDictionary<string, string> settings = MQTTSettings.LoadSettings();
             string broker = settings["mqttserver"];
-            int port = int.Parse(settings["mqttport"]);
+            if (!int.TryParse(settings["mqttport"], out int port))
+            {
+                SimHub.Logging.Current.Info($"Invalid or missing MQTT port '{settings["mqttport"]}'. Aborting connect.");
+                return;
+            }
             string topic = settings["mqtttopic"];
             string username = settings["mqttuser"];
             string password = "";
@@ -191,9 +195,9 @@ namespace User.MQTTPlugin
             {
                 password = Crypt.UnprotectString(settings["mqttpass"]);
             }
-            catch (Exception)
+            catch (Exception e)
             {
-
+                SimHub.Logging.Current.Info($"Failed to decrypt MQTT password, proceeding with empty password. {e.Message}");
             }
             string clientId = Guid.NewGuid().ToString();
 
