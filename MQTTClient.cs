@@ -140,6 +140,7 @@ namespace User.MQTTPlugin
             catch (Exception)
             {
                 obj = payload;
+                SimHub.Logging.Current.Info($"MQTT payload from topic {e.Topic} is not valid JSON; treating as plain string.");
             }
             string LogMessage = $"Received MQTT {payload} from topic {e.Topic}";
             SimHub.Logging.Current.Info(LogMessage);
