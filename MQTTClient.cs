@@ -130,7 +130,7 @@ namespace User.MQTTPlugin
 
         private static void client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
         {
-            string payload = Encoding.Default.GetString(e.Message);
+            string payload = Encoding.UTF8.GetString(e.Message);
             object obj;
             try
             {
