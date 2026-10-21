@@ -69,6 +69,15 @@ Elk punt heeft een vaste code (B = bug, A = architectuur, L = leesbaarheid, T = 
 - Een gewone tekstpayload zoals `on` logt bij elk bericht "not valid JSON".
 - `Publish` gooit een bericht zonder melding weg als er geen verbinding is ([MQTTClient.cs:170-180](MQTTClient.cs#L170-L180)).
 
+### B11. JSON-payloads worden ongemerkt herschreven
+*Bevestigd met tests (`MessageFormatterTests`), toegevoegd op 2026-10-21.*
+- **Oorzaak:** `JToken.Parse` in `MessageFormatter.ParsePayload` gebruikt de standaardinstellingen van Newtonsoft. Die zetten datumstrings om naar `DateTime` en getallen met een decimaalteken naar `double`.
+- **Gevolg:**
+  - Een datum met offset komt in de lokale tijdzone van de SimHub-pc terug, bijvoorbeeld `"2026-10-21T10:00:00+05:00"` → `"2026-10-21T07:00:00+02:00"`.
+  - Nullen aan het eind van een decimaal getal verdwijnen: `1.10` wordt `1.1`.
+  - Dashboards krijgen dus niet de tekst die de afzender stuurde.
+- **Richting:** parsen met `DateParseHandling.None`, zodat datumstrings ongewijzigd blijven, en met `FloatParseHandling.Decimal`, zodat het aantal decimalen behouden blijft.
+
 ## Architectuur
 
 ### A1. Globale statische toestand in `MQTTClient`
@@ -135,7 +144,7 @@ Elke fase levert een werkende, bouwbare plugin op met MSTest-tests, zoals [CLAUD
 |---|---|---|
 | **F0. Testproject** | `User.MQTTPlugin.Tests` (net48, MSTest) aanmaken en opnemen in `User.MQTTPlugin.sln`. De build- en testcommando's, inclusief één losse test draaien, vastleggen in CLAUDE.md. | Voorwaarde voor alles |
 | **F0b. Seams zonder gedragswijziging** | Op verzoek van de gebruiker (2026-10-21) naar voren gehaald: eerst de huidige code volledig testen, dan pas fixen. Pure helpers afsplitsen (berichtformatter met tijdstip als parameter, backoff, "settings found"-check, TLS- en poortcontrole, acties-serializer), een interface voor de instellingenopslag, en de UI-logica van `SettingsControlV2` in een testbare klasse. Gedrag blijft exact gelijk; bekende bugs blijven bestaan en worden met tests vastgelegd. T2 (adapter om M2Mqtt) en T4 (logger) blijven in F2. | T1, T3, deels T5 |
-| **F1. Snelle, veilige bugfixes** | Exceptie van de client-constructor afvangen, en de watchdog vóór de connect starten. Bool-instellingen correct opslaan en de staging-lijst wissen na een fout. Het pad voor een leeg wachtwoord en het `null`-resultaat van `Protect` afvangen. De "geen instellingen"-check repareren. `AttachDelegate` uit de setter halen. Logniveaus aanpassen en een melding toevoegen bij een publish zonder verbinding. De berichtformatter afsplitsen, met tests. | B1, B2, B7, B8, B9, B10, deels A4, T1, L6 |
+| **F1. Snelle, veilige bugfixes** | Exceptie van de client-constructor afvangen, en de watchdog vóór de connect starten. Bool-instellingen correct opslaan en de staging-lijst wissen na een fout. Het pad voor een leeg wachtwoord en het `null`-resultaat van `Protect` afvangen. De "geen instellingen"-check repareren. `AttachDelegate` uit de setter halen. Logniveaus aanpassen en een melding toevoegen bij een publish zonder verbinding. De berichtformatter afsplitsen, met tests (in F0b al gedaan). Payloads parsen zonder datum- en decimaalconversie. | B1, B2, B7, B8, B9, B10, B11, deels A4, T1, L6 |
 | **F2. Verbindingsbeheerder** | De statische `MQTTClient` vervangen door een beheerder met adapter en één lock. Test gebruikt een aparte client. Save forceert een reconnect en zegt het oude topic op. Dode velden opruimen. Tests met een fake client. | B3, B6, A1, T2, T4, T5 |
 | **F3. Acties naar de plugin** | Registreren in `Init` vanuit de instellingen. De UI roept alleen de plugin aan. Hernoemen, verwijderen en dubbele namen correct afhandelen. Serialisatie-helper met tests. | B4, A3 |
 | **F4. Instellingenmodel en opslag** | Getypeerd model in `ReadCommonSettings` en eenmalige migratie van de huidige `user.config` (zie D1). | B5, A2, T3, L2 |

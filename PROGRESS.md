@@ -9,7 +9,7 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | Fase | Status | Opmerking |
 |---|---|---|
 | F0. Testproject | ✅ | Klassiek net48-project met MSTest 3.1.1 en `vstest.console` uit het pakket `Microsoft.TestPlatform`; commando's in CLAUDE.md |
-| F0b. Seams zonder gedragswijziging | ✅ | Toegevoegd op verzoek van de gebruiker, zie PLAN.md. 139 tests groen; handmatige controle in SimHub nog door de gebruiker |
+| F0b. Seams zonder gedragswijziging | ✅ | Toegevoegd op verzoek van de gebruiker, zie PLAN.md. 139 tests groen en handmatig gecontroleerd in SimHub |
 | F1. Snelle, veilige bugfixes | ⬜ | |
 | F2. Verbindingsbeheerder | ⬜ | |
 | F3. Acties naar de plugin | ⬜ | |
@@ -31,6 +31,7 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | B8 | `AttachDelegate` bij elk bericht | F1 | ⬜ |
 | B9 | Foutpaden rond het wachtwoord | F1 | ⬜ |
 | B10 | Ruis in het log, stille publish | F1 | ⬜ |
+| B11 | JSON-payloads worden herschreven (tijdzone, decimalen) | F1 | ⬜ |
 | A1 | Verbindingsbeheerder in plaats van statische toestand | F2 | ⬜ |
 | A2 | Eén getypeerd instellingenmodel | F4 | ⬜ |
 | A3 | Acties bij de plugin | F3 | ⬜ |
@@ -48,6 +49,8 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | D3 | Oude `SettingsControl` verwijderen? | Ja, in F5; `DeserializeDict` gaat in F3 naar de serializer-helper | 2026-10-21 |
 
 ## Log
+
+- **2026-10-21:** De gebruiker heeft F0b in SimHub gecontroleerd (Debug-build, instellingenpagina): alles werkt nog. B11 (JSON-payloads worden herschreven) is met akkoord van de gebruiker aan PLAN.md toegevoegd en ingedeeld in F1.
 
 - **2026-10-21:** F0b afgerond (op verzoek van de gebruiker vóór F1 ingevoegd, zie PLAN.md). Er zijn nu 139 tests, en drie runs na elkaar slaagden allemaal. Alleen de Release-build is gemaakt.
   - **Nieuwe pure helpers:**
