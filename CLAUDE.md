@@ -22,7 +22,16 @@ A SimHub plugin (.NET Framework 4.8, WPF, old-style non-SDK `.csproj` with `pack
 - **Debug** builds write output straight into `C:\Program Files (x86)\SimHub\`, which is how the plugin gets deployed. That means the build needs write access to that folder, and it fails if SimHub is running, because SimHub locks the DLL. **Release** builds write to `bin\Release\`.
 - SimHub assemblies (`SimHub.Plugins`, `GameReaderCommon`, `SimHub.Logging`, `log4net`) are referenced from the SimHub install folder, so SimHub must be installed to build.
 - NuGet packages go in `packages\`. If they are missing, restore them with `nuget restore User.MQTTPlugin.sln` or `msbuild -t:restore -p:RestorePackagesConfig=true`.
-- There are no tests and no linter. To verify a change, build it, restart SimHub, and check the SimHub log, since everything is logged through `SimHub.Logging.Current.Info`.
+- There is no linter. Behaviour that unit tests can't cover (SimHub integration, the WPF UI, a real broker) is verified by building, restarting SimHub, and checking the SimHub log, since everything is logged through `SimHub.Logging.Current.Info`.
+
+## Unit tests
+
+Unit tests are required. Use **MSTest**.
+
+- **New and changed code:** every change comes with unit tests for the logic it adds or modifies.
+- **Existing code:** there are no tests yet. Existing testable logic must get tests too, for example the payload parsing and wrapping in `client_MqttMsgPublishReceived`, the `Crypt` round-trip, the `mqttactions` (de)serialization, and the settings parsing in `ConnectAndSubscribe`.
+- **Test project:** it doesn't exist yet. When it is first needed, create a separate `User.MQTTPlugin.Tests` project targeting .NET Framework 4.8 and add it to `User.MQTTPlugin.sln`. Then replace this bullet with the exact build and test commands, including how to run a single test.
+- **Testability:** much of the logic sits in static methods mixed with side effects (M2Mqtt client, `Properties.Settings`, `MQTTPlugin.Instance`, logging). To test it, extract pure helpers (for example a method that turns topic and payload bytes into the message JSON) and leave behaviour unchanged. Don't let tests connect to a real broker or write to the user's `Properties.Settings`.
 
 ## Architecture
 
@@ -47,6 +56,7 @@ A SimHub plugin (.NET Framework 4.8, WPF, old-style non-SDK `.csproj` with `pack
 
 ## Project skills
 
-[.claude/skills/](.claude/skills/) holds two third-party skills installed from skills.sh. [skills-lock.json](skills-lock.json) records their source and hash; update them with `npx skills update -p`.
+[.claude/skills/](.claude/skills/) holds third-party skills installed from skills.sh. [skills-lock.json](skills-lock.json) records their source and hash; update them with `npx skills update -p`.
 - `csharp-async` (github/awesome-copilot): async/await guidance. Its `ValueTask` and `IAsyncEnumerable` suggestions need extra NuGet packages on .NET Framework 4.8, and its `ConfigureAwait(false)` advice doesn't apply to the UI handlers (see above).
 - `mqtt-development` (mindrally/skills): general MQTT guidance (QoS, LWT, sessions, TLS). It is not specific to M2Mqtt, so check its suggestions against the M2Mqtt 4.3 API.
+- `writing-mstest-tests` (dotnet/skills): MSTest conventions and assertion APIs, gated by the installed MSTest version. Use it as guidance when writing tests too, even though its description defers new-test design to a `code-testing` skill that isn't installed. Some examples use newer C# such as collection expressions (`[ ... ]`); write tests in C# 7.3. It says to verify with `dotnet test`; for this classic non-SDK project, use the build and test commands recorded under Unit tests instead.
