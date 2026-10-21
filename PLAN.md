@@ -36,10 +36,11 @@ Elk punt heeft een vaste code (B = bug, A = architectuur, L = leesbaarheid, T = 
 - **Gevolg:** gekoppelde knoppen naar `MQTTPlugin.<naam>` doen niets tot iemand die pagina opent. Een hernoemde actie blijft daarnaast onder de oude naam geregistreerd, en dubbele namen worden stil overschreven.
 - **Te verifiëren:** wat SimHub doet met acties van de oude plugininstantie na een rebuild (gamewissel). `SettingsControlV2.Plugin` kan dan naar een oude instantie wijzen.
 
-### B5. Instellingen gaan mogelijk verloren bij een SimHub-update
-*Te verifiëren.*
-- **Oorzaak:** `Properties.Settings` slaat op in een `user.config` waarvan het pad de versie van het SimHub-exe bevat. `Upgrade()` wordt nergens aangeroepen.
-- **Gevolg:** na een SimHub-update kunnen broker, wachtwoord en acties leeg zijn.
+### B5. Instellingen gaan verloren bij een SimHub-update
+*Bevestigd.*
+- **Oorzaak:** `Properties.Settings` slaat op in `%LOCALAPPDATA%\<bedrijfsnaam>\SimHubWPF.exe_Url_…\1.0.0.0\user.config`. De versiemap blijft `1.0.0.0`, maar de bedrijfsnaam (CompanyName van het SimHub-exe) verandert per release. Op de ontwikkel-pc staan daardoor 6 `user.config`-bestanden met MQTT-instellingen, in de mappen `SimHub`, `뙆`, `삎`, `퉡`, `퍒` en `퍒kak`.
+- **Gevolg:** na een SimHub-update zijn broker, wachtwoord en acties leeg.
+- **Geen oplossing:** `Settings.Upgrade()` zoekt alleen naar oudere versies binnen dezelfde bedrijfsmap en helpt hier dus niet. De opslag van `ReadCommonSettings` (`PluginsData\Common\MQTTPlugin.GeneralSettings.json` in de SimHub-installatiemap) heeft wel meerdere updates overleefd.
 
 ### B6. Race conditions rond de verbinding
 *Uit code.*
@@ -85,8 +86,8 @@ Elk punt heeft een vaste code (B = bug, A = architectuur, L = leesbaarheid, T = 
   - `Properties.Settings` wordt benaderd via `Dictionary<string,string>` in `MQTTSettings`.
   - `MQTTPluginSettings` (via `ReadCommonSettings`) is een dode template-rest.
   - De acties staan als XML-string in `mqttactions`.
-- **Voorstel:** één getypeerd model (verbinding en acties) met één opslag, mogelijk de eigen `ReadCommonSettings` van SimHub. Daarbij hoort een eenmalige migratie van de bestaande `user.config`. Zie beslissing D1.
-- **Lost op:** B2 en waarschijnlijk B5.
+- **Voorstel:** één getypeerd model (verbinding en acties) met één opslag, namelijk de eigen `ReadCommonSettings` van SimHub. Daarbij hoort een eenmalige migratie van de bestaande `user.config`. Zie beslissing D1.
+- **Lost op:** B2 en B5.
 
 ### A3. Acties horen bij de plugin, niet bij de UI
 - `Init` registreert de acties uit de instellingen.
@@ -98,7 +99,7 @@ Elk punt heeft een vaste code (B = bug, A = architectuur, L = leesbaarheid, T = 
 - **Voorstel:**
   - De verwerking gaat naar een pure formatter.
   - De plugin ontvangt berichten via een event in plaats van via de statische `Instance`.
-  - De timestamp-wijziging volgt beslissing D2.
+  - Naast `timestamp` komt een veld `timestampIso` (beslissing D2).
 
 ### A5. Oude code en template-resten opruimen
 - Het oude `SettingsControl` en de schakelaar in `GetWPFSettingsControl` gaan weg. `DeserializeDict` verhuist naar een serializer-helper. Zie beslissing D3.
@@ -136,12 +137,15 @@ Elke fase levert een werkende, bouwbare plugin op met MSTest-tests, zoals [CLAUD
 | **F1. Snelle, veilige bugfixes** | Exceptie van de client-constructor afvangen, en de watchdog vóór de connect starten. Bool-instellingen correct opslaan en de staging-lijst wissen na een fout. Het pad voor een leeg wachtwoord en het `null`-resultaat van `Protect` afvangen. De "geen instellingen"-check repareren. `AttachDelegate` uit de setter halen. Logniveaus aanpassen en een melding toevoegen bij een publish zonder verbinding. De berichtformatter afsplitsen, met tests. | B1, B2, B7, B8, B9, B10, deels A4, T1, L6 |
 | **F2. Verbindingsbeheerder** | De statische `MQTTClient` vervangen door een beheerder met adapter en één lock. Test gebruikt een aparte client. Save forceert een reconnect en zegt het oude topic op. Dode velden opruimen. Tests met een fake client. | B3, B6, A1, T2, T4, T5 |
 | **F3. Acties naar de plugin** | Registreren in `Init` vanuit de instellingen. De UI roept alleen de plugin aan. Hernoemen, verwijderen en dubbele namen correct afhandelen. Serialisatie-helper met tests. | B4, A3 |
-| **F4. Instellingenmodel en opslag** | Getypeerd model, één opslag en migratie van `user.config` (afhankelijk van D1). | B5, A2, T3, L2 |
-| **F5. Opruimen en leesbaarheid** | Oude `SettingsControl` en template-resten weg (afhankelijk van D3). Handlers hernoemen en dubbele logica samenvoegen. | A5, L1, L3, L4, L5 |
+| **F4. Instellingenmodel en opslag** | Getypeerd model in `ReadCommonSettings` en eenmalige migratie van de huidige `user.config` (zie D1). | B5, A2, T3, L2 |
+| **F5. Opruimen en leesbaarheid** | Oude `SettingsControl` en template-resten weg (zie D3). Handlers hernoemen en dubbele logica samenvoegen. | A5, L1, L3, L4, L5 |
 | **F6. Documentatie** | README en de architectuursectie van CLAUDE.md bijwerken naar de nieuwe opzet. | — |
 
-## Open beslissingen
+## Beslissingen
 
-- **D1. Opslag:** overstappen naar de eigen opslag van SimHub (`ReadCommonSettings`), met migratie van de bestaande instellingen? *Advies: ja, zeker als B5 in de praktijk voorkomt.* Nodig vóór F4.
-- **D2. Timestamp:** nu is dat een `nl-NL`-string. ISO 8601 is robuuster, maar breekt dashboards die de huidige tekst parsen. *Advies: een extra veld (bijvoorbeeld `timestampIso`) toevoegen en het bestaande laten staan.* Nodig vóór de formatter in F1.
-- **D3. Oude `SettingsControl` verwijderen?** *Advies: ja.* Nodig vóór F5.
+- **D1. Opslag:** overstappen naar de eigen opslag van SimHub (`ReadCommonSettings`), met migratie van de bestaande instellingen?
+  - **Besluit (2026-10-21):** ja. Er komt een getypeerd model in de opslag van `ReadCommonSettings`. De eenmalige migratie leest de `user.config` van de huidige SimHub-versie (via `Properties.Settings`), en alleen als de nieuwe opslag nog leeg is. Oude bedrijfsmappen worden niet doorzocht.
+- **D2. Timestamp:** nu is dat een `nl-NL`-string. ISO 8601 is robuuster, maar breekt dashboards die de huidige tekst parsen.
+  - **Besluit (2026-10-21):** `timestamp` blijft exact zoals nu (`nl-NL`). Er komt een extra veld `timestampIso` bij in ISO 8601 met offset (`DateTimeOffset.ToString("o")`, bijvoorbeeld `2026-10-21T14:03:12.3450000+02:00`).
+- **D3. Oude `SettingsControl` verwijderen?**
+  - **Besluit (2026-10-21):** ja, in F5. Het scherm wordt nooit getoond, omdat `GetWPFSettingsControl` via een constante altijd V2 kiest. Bij laten staan zou het in F2–F4 telkens mee aangepast moeten worden. `DeserializeDict` verhuist in F3 naar de serializer-helper. Terughalen kan via git.
