@@ -8,7 +8,7 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 
 | Fase | Status | Opmerking |
 |---|---|---|
-| F0. Testproject | ⬜ | |
+| F0. Testproject | ✅ | Klassiek net48-project met MSTest 3.1.1 en `vstest.console` uit het pakket `Microsoft.TestPlatform`; commando's in CLAUDE.md |
 | F1. Snelle, veilige bugfixes | ⬜ | |
 | F2. Verbindingsbeheerder | ⬜ | |
 | F3. Acties naar de plugin | ⬜ | |
@@ -47,6 +47,18 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | D3 | Oude `SettingsControl` verwijderen? | Ja, in F5; `DeserializeDict` gaat in F3 naar de serializer-helper | 2026-10-21 |
 
 ## Log
+
+- **2026-10-21:** Karakteriseringstests voor de huidige code toegevoegd, vóór F1 en zonder wijzigingen aan de productiecode. Er zijn nu 53 tests, en drie runs na elkaar slaagden allemaal.
+  - **Gedekt:** de `Crypt`-paden, het XML-formaat van `mqttactions` (vastgelegd als golden string), `MQTTSettings`, de berichtverwerking in `client_MqttMsgPublishReceived`, de vroege exits van `ConnectAndSubscribe`, `Publish` zonder verbinding en de watchdog-guards.
+  - **Bugs vastgelegd als huidig gedrag:** B1, B2, B8, B9 en B10. Die tests zijn gemarkeerd met `Current behaviour (Bx)` en moeten in F1 bewust worden omgezet.
+  - **Nieuwe bevinding:** Newtonsoft herschrijft een datumstring met offset in een JSON-payload naar de lokale tijdzone. `+05:00` wordt bijvoorbeeld `07:00:00+02:00`. Ook verdwijnen nullen aan het eind van een decimaal getal (`1.10` wordt `1.1`). Dit staat nog niet in PLAN.md.
+  - **Nog niet testbaar zonder seams (T1–T5):** verbinden, abonneren en Test bij een live verbinding (B3), de backoff-stappen na de eerste, de "settings found"-check (B7, alleen de oorzaak is vastgelegd), `Init`/`End`/`AddAction` en de UI-logica in `SettingsControlV2`.
+
+- **2026-10-21:** F0 afgerond. `User.MQTTPlugin.Tests` aangemaakt en opgenomen in `User.MQTTPlugin.sln`, en `InternalsVisibleTo("User.MQTTPlugin.Tests")` toegevoegd aan de plugin. Release-build geslaagd en 4 tests geslaagd (`CryptTests`: round-trip en geen platte tekst).
+  - Het project is klassiek met `packages.config`, niet SDK-style. MSBuild 17.8 van de BuildTools kan `Microsoft.NET.Sdk` niet vinden, omdat alleen .NET SDK 5.0 geïnstalleerd is.
+  - MSTest staat op 3.1.1. Vanaf 3.2 komen er transitieve pakketten bij, en die moeten met `packages.config` allemaal met de hand worden opgenomen.
+  - De tests draaien op `vstest.console.exe` uit het NuGet-pakket `Microsoft.TestPlatform` 17.11.1, omdat de BuildTools geen testrunner bevatten.
+  - Bouwen gebeurt in Release, omdat een Debug-build ook de plugin naar de SimHub-map schrijft.
 
 - **2026-10-21:** Skill `code-testing` (dotnet/skills) geïnstalleerd in `.claude/skills/` voor het ontwerpen van nieuwe tests. De kanttekeningen staan in CLAUDE.md onder "Project skills".
 - **2026-10-21:** Beslissingen D1, D2 en D3 genomen (zie tabel). B5 bevestigd: op de ontwikkel-pc staan 6 `user.config`-bestanden met MQTT-instellingen in steeds andere bedrijfsmappen (`SimHub`, `뙆`, `삎`, `퉡`, `퍒`, `퍒kak`). SimHub wijzigt per release de CompanyName, de versiemap blijft `1.0.0.0`, en `Upgrade()` lost het daarom niet op. `PluginsData\Common\MQTTPlugin.GeneralSettings.json` heeft updates wel overleefd.

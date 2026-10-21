@@ -36,7 +36,22 @@ Unit tests are required. Use **MSTest**.
 
 - **New and changed code:** every change comes with unit tests for the logic it adds or modifies.
 - **Existing code:** there are no tests yet. Existing testable logic must get tests too, for example the payload parsing and wrapping in `client_MqttMsgPublishReceived`, the `Crypt` round-trip, the `mqttactions` (de)serialization, and the settings parsing in `ConnectAndSubscribe`.
-- **Test project:** it doesn't exist yet. When it is first needed, create a separate `User.MQTTPlugin.Tests` project targeting .NET Framework 4.8 and add it to `User.MQTTPlugin.sln`. Then replace this bullet with the exact build and test commands, including how to run a single test.
+- **Test project:** [User.MQTTPlugin.Tests/](User.MQTTPlugin.Tests/) is an old-style .NET Framework 4.8 project with `packages.config`, like the main project. It uses MSTest 3.1.1 and runs on `vstest.console.exe` from the `Microsoft.TestPlatform` package.
+  - It isn't SDK-style because the BuildTools MSBuild can't resolve `Microsoft.NET.Sdk` here (the only .NET SDK installed is 5.0). Since `packages.config` doesn't restore transitive dependencies, stay on MSTest 3.1.x: 3.2 and later pull in `Microsoft.Testing.Platform` packages that would all have to be listed by hand.
+  - The main assembly has `InternalsVisibleTo("User.MQTTPlugin.Tests")`, so tests can reach `internal` types.
+  - Build in **Release**. A Debug build of the solution also builds the plugin into the SimHub folder, which fails while SimHub is running.
+
+  ```powershell
+  $msb = 'C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\MSBuild\Current\Bin\MSBuild.exe'
+  $vstest = '.\packages\Microsoft.TestPlatform.17.11.1\tools\net462\Common7\IDE\Extensions\TestPlatform\vstest.console.exe'
+  & $msb .\User.MQTTPlugin.sln -t:restore -p:RestorePackagesConfig=true   # only when packages\ is missing
+  & $msb .\User.MQTTPlugin.sln -p:Configuration=Release
+  & $vstest .\User.MQTTPlugin.Tests\bin\Release\User.MQTTPlugin.Tests.dll                    # all tests
+  & $vstest .\User.MQTTPlugin.Tests\bin\Release\User.MQTTPlugin.Tests.dll /TestCaseFilter:"FullyQualifiedName~CryptTests.ProtectString_DoesNotReturnPlainText"   # one test
+  ```
+
+- **Characterization tests:** tests whose comment starts with `Current behaviour (Bx)` pin a known bug from [PLAN.md](PLAN.md). The phase that fixes Bx changes them on purpose. [TestState.cs](User.MQTTPlugin.Tests/TestState.cs) resets the static state through reflection before and after each test. It changes `Properties.Settings.Default` only in memory and restores it with `Reload()`; never call `Save()` in tests. Tests that need a failing host use `broker.invalid`, which always fails DNS and never connects.
+- **Adding test files:** the project doesn't glob, so add each new `.cs` file as `<Compile Include>` in the test `.csproj`. Add a new package to `packages.config` together with its `HintPath` reference, and list every dependency it has.
 - **Testability:** much of the logic sits in static methods mixed with side effects (M2Mqtt client, `Properties.Settings`, `MQTTPlugin.Instance`, logging). To test it, extract pure helpers (for example a method that turns topic and payload bytes into the message JSON) and leave behaviour unchanged. Don't let tests connect to a real broker or write to the user's `Properties.Settings`.
 
 ## Architecture
@@ -71,4 +86,4 @@ Unit tests are required. Use **MSTest**.
   - Its rule "fix the assertion, not the production code" applies to tests of existing behaviour. In bug-fix phases the tests pin the fixed behaviour from [PLAN.md](PLAN.md); if a test shows the plan is wrong, report it instead of bending the test.
 - `csharp-async` (github/awesome-copilot): async/await guidance. Its `ValueTask` and `IAsyncEnumerable` suggestions need extra NuGet packages on .NET Framework 4.8, and its `ConfigureAwait(false)` advice doesn't apply to the UI handlers (see above).
 - `mqtt-development` (mindrally/skills): general MQTT guidance (QoS, LWT, sessions, TLS). It is not specific to M2Mqtt, so check its suggestions against the M2Mqtt 4.3 API.
-- `writing-mstest-tests` (dotnet/skills): MSTest conventions and assertion APIs, gated by the installed MSTest version. New-test design goes through `code-testing`. Some examples use newer C# such as collection expressions (`[ ... ]`); write tests in C# 7.3. It says to verify with `dotnet test`; for this classic non-SDK project, use the build and test commands recorded under Unit tests instead.
+- `writing-mstest-tests` (dotnet/skills): MSTest conventions and assertion APIs, gated by the installed MSTest version. New-test design goes through `code-testing`. Some examples use newer C# such as collection expressions (`[ ... ]`); write tests in C# 7.3. It says to verify with `dotnet test`; for this classic non-SDK project, use the build and test commands recorded under Unit tests instead. Its APIs must exist in MSTest 3.1.1 (for example, use `Assert.ThrowsException`, not `Assert.ThrowsExactly`).
