@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
@@ -29,6 +30,16 @@ namespace User.MQTTPlugin.Tests
 
         private static void WatchdogTick() => TestState.InvokeStatic(typeof(MQTTClient), "WatchdogTick", null, null);
 
+        private static void WaitForReconnectToFinish()
+        {
+            var stopwatch = Stopwatch.StartNew();
+            while (Reconnecting && stopwatch.Elapsed < TimeSpan.FromSeconds(10))
+            {
+                Thread.Sleep(10);
+            }
+            Assert.IsFalse(Reconnecting, "the reconnect task didn't finish");
+        }
+
         // --- ConnectAndSubscribe ---
 
         [TestMethod]
@@ -42,8 +53,8 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void ConnectAndSubscribe_NonNumericPort_DoesNotConnect()
         {
-            Properties.Settings.Default["mqttserver"] = UnresolvableBroker;
-            Properties.Settings.Default["mqttport"] = "abc";
+            TestState.Store["mqttserver"] = UnresolvableBroker;
+            TestState.Store["mqttport"] = "abc";
 
             MQTTClient.ConnectAndSubscribe();
 
@@ -56,11 +67,12 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void ConnectAndSubscribe_UnresolvableBroker_ThrowsSocketException()
         {
-            Properties.Settings.Default["mqttserver"] = UnresolvableBroker;
-            Properties.Settings.Default["mqttport"] = "1883";
+            TestState.Store["mqttserver"] = UnresolvableBroker;
+            TestState.Store["mqttport"] = "1883";
 
             Assert.ThrowsException<SocketException>(() => MQTTClient.ConnectAndSubscribe());
             Assert.IsNull(MQTTClient.CLIENT);
+            Assert.AreEqual(false, TestState.Store["lastConnectionSuccessful"]);
         }
 
         // Current behaviour (B1): the Test button gets a faulted task for the same reason.
@@ -94,6 +106,31 @@ namespace User.MQTTPlugin.Tests
             MQTTClient.Publish("t", "m");
 
             Assert.IsFalse(client.IsConnected);
+        }
+
+        // --- Backoff ---
+
+        [TestMethod]
+        [DataRow(0, 2, DisplayName = "attempt 0")]
+        [DataRow(1, 5, DisplayName = "attempt 1")]
+        [DataRow(2, 10, DisplayName = "attempt 2")]
+        [DataRow(3, 30, DisplayName = "attempt 3")]
+        [DataRow(4, 60, DisplayName = "attempt 4")]
+        [DataRow(5, 60, DisplayName = "attempt 5 repeats the last step")]
+        [DataRow(1000, 60, DisplayName = "attempt 1000 repeats the last step")]
+        public void GetBackoffDelaySeconds_FollowsSchedule(int attempt, int expectedSeconds)
+        {
+            Assert.AreEqual(expectedSeconds, MQTTClient.GetBackoffDelaySeconds(attempt));
+        }
+
+        [TestMethod]
+        public void SleepSeconds_ByDefault_SleepsThatManySeconds()
+        {
+            var stopwatch = Stopwatch.StartNew();
+
+            TestState.OriginalSleepSeconds(1);
+
+            Assert.IsTrue(stopwatch.Elapsed >= TimeSpan.FromSeconds(0.9), stopwatch.Elapsed.ToString());
         }
 
         // --- Watchdog ---
@@ -132,7 +169,7 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void WatchdogTick_ReconnectAlreadyRunning_DoesNothing()
         {
-            Properties.Settings.Default["mqttserver"] = UnresolvableBroker;
+            TestState.Store["mqttserver"] = UnresolvableBroker;
             TestState.SetStatic(typeof(MQTTClient), "reconnecting", true);
 
             WatchdogTick();
@@ -141,28 +178,38 @@ namespace User.MQTTPlugin.Tests
         }
 
         [TestMethod]
-        public void WatchdogTick_Disconnected_StartsOneReconnectAndClearsFlagAfterward()
+        public void WatchdogTick_DuringReconnect_DoesNotStartAnother()
         {
             // The empty port makes the delayed ConnectAndSubscribe stop before any network call.
-            Properties.Settings.Default["mqttserver"] = UnresolvableBroker;
+            TestState.Store["mqttserver"] = UnresolvableBroker;
+            var release = new ManualResetEventSlim();
+            MQTTClient.SleepSeconds = seconds => release.Wait(TimeSpan.FromSeconds(10));
 
             WatchdogTick();
+            Assert.IsTrue(Reconnecting);
+            WatchdogTick();
+            release.Set();
+            WaitForReconnectToFinish();
 
             Assert.AreEqual(1, ReconnectAttempt);
-            Assert.IsTrue(Reconnecting);
+        }
 
-            WatchdogTick();
-            Assert.AreEqual(1, ReconnectAttempt, "a second tick during the reconnect must not start another one");
+        // Failed attempts never reset the counter, so the waits follow the backoff schedule.
+        [TestMethod]
+        public void WatchdogTick_RepeatedFailures_WaitsAccordingToBackoff()
+        {
+            TestState.Store["mqttserver"] = UnresolvableBroker;
+            var waits = new List<int>();
+            MQTTClient.SleepSeconds = seconds => waits.Add(seconds);
 
-            // First backoff step is 2 seconds.
-            var stopwatch = Stopwatch.StartNew();
-            while (Reconnecting && stopwatch.Elapsed < TimeSpan.FromSeconds(10))
+            for (int i = 0; i < 7; i++)
             {
-                Thread.Sleep(100);
+                WatchdogTick();
+                WaitForReconnectToFinish();
             }
-            Assert.IsFalse(Reconnecting);
-            Assert.IsTrue(stopwatch.Elapsed >= TimeSpan.FromSeconds(1.5), stopwatch.Elapsed.ToString());
-            Assert.AreEqual(1, ReconnectAttempt, "a failed attempt doesn't reset the counter");
+
+            CollectionAssert.AreEqual(new[] { 2, 5, 10, 30, 60, 60, 60 }, waits);
+            Assert.AreEqual(7, ReconnectAttempt);
         }
     }
 }

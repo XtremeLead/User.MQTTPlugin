@@ -1,5 +1,5 @@
-﻿using System.Collections.Generic;
-using System.Configuration;
+﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 
 namespace User.MQTTPlugin
@@ -7,14 +7,18 @@ namespace User.MQTTPlugin
     class MQTTSettings
     {
         private static IDictionary<string, string> SETTINGS = new Dictionary<string, string>();
+
+        // Where the settings live, and what happens after saving. Tests replace both.
+        internal static ISettingsStore Store = new PropertiesSettingsStore();
+        internal static Func<Task> Reconnect = MQTTClient.ConnectAndSubscribeAsync;
+
         public static IDictionary<string, string> LoadSettings()
         {
             IDictionary<string, string> settings = new Dictionary<string, string>();
 
-            foreach (SettingsProperty currentProperty in Properties.Settings.Default.Properties)
+            foreach (string name in Store.Names)
             {
-                string name = currentProperty.Name;
-                settings.Add(name, Properties.Settings.Default[name].ToString());
+                settings.Add(name, Store[name].ToString());
             }
             return settings;
         }
@@ -26,19 +30,19 @@ namespace User.MQTTPlugin
 
         public string GetSetting(string key)
         {
-            return Properties.Settings.Default[key].ToString();
+            return Store[key].ToString();
         }
 
         public static Task SaveSettingsAsync()
         {
             foreach (KeyValuePair<string, string> item in SETTINGS)
             {
-                Properties.Settings.Default[item.Key] = item.Value;
+                Store[item.Key] = item.Value;
             }
-            Properties.Settings.Default.Save();
+            Store.Save();
 
             // Settings have been tested, so connect
-            return MQTTClient.ConnectAndSubscribeAsync();
+            return Reconnect();
         }
     }
 }

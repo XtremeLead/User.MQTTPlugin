@@ -1,13 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Xml;
 
 namespace User.MQTTPlugin
 {
@@ -15,9 +12,6 @@ namespace User.MQTTPlugin
     {
         public MQTTPlugin Plugin { get; }
         private IDictionary<string, string> settings = new Dictionary<string, string>();
-        private static readonly string CONNECTION_FAILED_MESSAGE = "Connection failed. Please check your settings or broker availability.";
-        private static readonly string CONNECTION_SUCCESS_MESSAGE = "Successfully connected. Happy simracing!";
-        private static readonly string CONNECTION_TEST_SUCCESS_MESSAGE = "Successfully connected. Click Save to Save your settings and connect.";
         private Dictionary<string, ValueTuple<string, string>> ActionsToStore = new Dictionary<string, ValueTuple<string, string>>();
 
         private static readonly Brush PlaceholderBrush = Brushes.Gray;
@@ -34,7 +28,7 @@ namespace User.MQTTPlugin
             txtPort.Text = settings["mqttport"];
             txtUser.Text = settings["mqttuser"];
             txtTopic.Text = settings["mqtttopic"];
-            chkUseTls.IsChecked = settings.TryGetValue("mqtttls", out string tlsValue) && tlsValue == "True";
+            chkUseTls.IsChecked = SettingsRules.IsTlsEnabled(settings);
 
             try
             {
@@ -47,27 +41,20 @@ namespace User.MQTTPlugin
 
             LoadExistingActions();
 
-            Dictionary<string, string> MqttSettingsFound = settings
-                .Where(kvp => kvp.Key.IndexOf("mqtt") > -1 && kvp.Value != "")
-                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-            if (MqttSettingsFound.Count == 0)
+            bool isConnected;
+            try
             {
-                ConnectionStatus.Content = "Please provide MQTT settings.";
+                isConnected = MQTTClient.CLIENT != null && MQTTClient.CLIENT.IsConnected;
             }
-
-            if (MQTTClient.CLIENT != null || MqttSettingsFound.Count > 0)
+            catch (ObjectDisposedException)
             {
-                bool isConnected;
-                try
-                {
-                    isConnected = MQTTClient.CLIENT != null && MQTTClient.CLIENT.IsConnected;
-                }
-                catch (ObjectDisposedException)
-                {
-                    isConnected = false;
-                }
-                ConnectionStatus.Content = isConnected ? CONNECTION_SUCCESS_MESSAGE : CONNECTION_FAILED_MESSAGE;
+                isConnected = false;
+            }
+            string status = SettingsViewLogic.InitialConnectionStatus(
+                SettingsRules.CountConfiguredMqttSettings(settings), MQTTClient.CLIENT != null, isConnected);
+            if (status != null)
+            {
+                ConnectionStatus.Content = status;
             }
         }
 
@@ -77,7 +64,7 @@ namespace User.MQTTPlugin
 
             try
             {
-                ActionsToStore = (Dictionary<string, (string, string)>)SettingsControl.DeserializeDict(settings["mqttactions"], ActionsToStore.GetType());
+                ActionsToStore = ActionsSerializer.Deserialize(settings["mqttactions"]);
                 foreach (var action in ActionsToStore)
                 {
                     AddRowToUi(action.Key, action.Value.Item1, action.Value.Item2, registerImmediately: true);
@@ -110,8 +97,8 @@ namespace User.MQTTPlugin
         private void chkUseTls_Changed(object sender, RoutedEventArgs e)
         {
             MQTTSettings.RememberSetting("mqtttls", chkUseTls.IsChecked == true ? "True" : "False");
-            if (chkUseTls.IsChecked == true && txtPort.Text == "1883") txtPort.Text = "8883";
-            else if (chkUseTls.IsChecked == false && txtPort.Text == "8883") txtPort.Text = "1883";
+            string port = SettingsViewLogic.PortAfterTlsChange(chkUseTls.IsChecked, txtPort.Text);
+            if (port != txtPort.Text) txtPort.Text = port;
         }
 
         private void StoreInSettings(string key, object sender)
@@ -134,13 +121,13 @@ namespace User.MQTTPlugin
             bool isConnected;
             try { isConnected = MQTTClient.CLIENT != null && MQTTClient.CLIENT.IsConnected; }
             catch (ObjectDisposedException) { isConnected = false; }
-            ConnectionStatus.Content = isConnected ? CONNECTION_SUCCESS_MESSAGE : CONNECTION_FAILED_MESSAGE;
+            ConnectionStatus.Content = isConnected ? SettingsViewLogic.ConnectionSuccessMessage : SettingsViewLogic.ConnectionFailedMessage;
             btnSave.IsEnabled = true;
         }
 
         private async void SHButtonPrimary_Click_1(object sender, RoutedEventArgs e)
         {
-            if (!int.TryParse(txtPort.Text, out int port))
+            if (!SettingsRules.TryParsePort(txtPort.Text, out int port))
             {
                 ConnectionStatus.Content = "Invalid port.";
                 return;
@@ -151,20 +138,19 @@ namespace User.MQTTPlugin
             {
                 bool useTls = chkUseTls.IsChecked == true;
                 bool connectionSuccessful = await MQTTClient.TestConnectionAsync(txtBroker.Text, port, txtUser.Text, txtPassword.Password, useTls);
-                ConnectionStatus.Content = connectionSuccessful ? CONNECTION_TEST_SUCCESS_MESSAGE : CONNECTION_FAILED_MESSAGE;
-                Properties.Settings.Default["lastConnectionSuccessful"] = connectionSuccessful;
+                ConnectionStatus.Content = connectionSuccessful ? SettingsViewLogic.ConnectionTestSuccessMessage : SettingsViewLogic.ConnectionFailedMessage;
+                MQTTSettings.Store["lastConnectionSuccessful"] = connectionSuccessful;
                 btnSave.IsEnabled = connectionSuccessful;
             }
             catch (Exception)
             {
-                ConnectionStatus.Content = CONNECTION_FAILED_MESSAGE;
+                ConnectionStatus.Content = SettingsViewLogic.ConnectionFailedMessage;
             }
         }
 
         private void txtPort_KeyDown(object sender, KeyEventArgs e)
         {
-            bool isDigit = (e.Key >= Key.D0 && e.Key <= Key.D9) || (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9);
-            e.Handled = !isDigit;
+            e.Handled = !SettingsViewLogic.IsPortKey(e.Key);
         }
 
         // --- Actions section (redesigned) ---
@@ -265,7 +251,7 @@ namespace User.MQTTPlugin
 
         private string GetRealText(TextBox box)
         {
-            return Equals(box.Foreground, PlaceholderBrush) ? "" : (box.Text ?? "").Trim();
+            return SettingsViewLogic.RealText(box.Text, Equals(box.Foreground, PlaceholderBrush));
         }
 
         private void btnSaveActions_Click(object sender, RoutedEventArgs e)
@@ -284,7 +270,7 @@ namespace User.MQTTPlugin
                 string topic = GetRealText(txtTopic);
                 string message = GetRealText(txtMessage);
 
-                if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(topic) || string.IsNullOrEmpty(message))
+                if (!SettingsViewLogic.IsCompleteAction(name, topic, message))
                 {
                     skipped++;
                     continue;
@@ -314,25 +300,10 @@ namespace User.MQTTPlugin
                 }
             }
 
-            Properties.Settings.Default["mqttactions"] = SerializeDict(ActionsToStore);
-            Properties.Settings.Default.Save();
+            MQTTSettings.Store["mqttactions"] = ActionsSerializer.Serialize(ActionsToStore);
+            MQTTSettings.Store.Save();
 
-            ActionsStatus.Content = skipped == 0
-                ? $"Saved {ActionsToStore.Count} action(s)."
-                : $"Saved {ActionsToStore.Count} action(s); {skipped} incomplete row(s) skipped — fill in all three fields.";
-        }
-
-        private string SerializeDict(Dictionary<string, ValueTuple<string, string>> tuple)
-        {
-            DataContractSerializer serializer = new DataContractSerializer(tuple.GetType());
-            using (StringWriter sw = new StringWriter())
-            using (XmlTextWriter writer = new XmlTextWriter(sw))
-            {
-                writer.Formatting = Formatting.Indented;
-                serializer.WriteObject(writer, tuple);
-                writer.Flush();
-                return sw.ToString();
-            }
+            ActionsStatus.Content = SettingsViewLogic.ActionsSavedMessage(ActionsToStore.Count, skipped);
         }
     }
 }

@@ -70,10 +70,15 @@
   <ItemGroup>
     <Compile Include="ActionsSerializationTests.cs" />
     <Compile Include="CryptTests.cs" />
+    <Compile Include="FakeSettingsStore.cs" />
+    <Compile Include="MessageFormatterTests.cs" />
     <Compile Include="MessageReceivedTests.cs" />
     <Compile Include="MQTTClientTests.cs" />
     <Compile Include="MQTTPluginTests.cs" />
     <Compile Include="MQTTSettingsTests.cs" />
+    <Compile Include="PropertiesSettingsStoreTests.cs" />
+    <Compile Include="SettingsRulesTests.cs" />
+    <Compile Include="SettingsViewLogicTests.cs" />
     <Compile Include="TestState.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -28,6 +28,15 @@ namespace User.MQTTPlugin
         // Backoff schedule in seconds; caps out and repeats at the last value.
         private static readonly int[] BackoffSchedule = { 2, 5, 10, 30, 60 };
 
+        // How the reconnect task waits before it connects. Tests replace it so they don't sleep.
+        internal static Action<int> SleepSeconds = seconds => Thread.Sleep(seconds * 1000);
+
+        internal static int GetBackoffDelaySeconds(int reconnectAttempt)
+        {
+            int delayIndex = Math.Min(reconnectAttempt, BackoffSchedule.Length - 1);
+            return BackoffSchedule[delayIndex];
+        }
+
         public static void ConnectMQTT(string broker, int port, string clientId, string username, string password, bool useTls = false)
         {
             lock (ClientLock)
@@ -53,12 +62,12 @@ namespace User.MQTTPlugin
                 }
                 catch (Exception e)
                 {
-                    Properties.Settings.Default["lastConnectionSuccessful"] = false;
+                    MQTTSettings.Store["lastConnectionSuccessful"] = false;
                     SimHub.Logging.Current.Info($"Failed to connect to MQTT Broker {broker}. {e.InnerException?.Message ?? e.Message}");
                 }
 
                 IsConnected = client.IsConnected;
-                Properties.Settings.Default["lastConnectionSuccessful"] = client.IsConnected;
+                MQTTSettings.Store["lastConnectionSuccessful"] = client.IsConnected;
                 if (client.IsConnected)
                 {
                     SimHub.Logging.Current.Info($"Connected to MQTT Broker {broker}");
@@ -102,12 +111,12 @@ namespace User.MQTTPlugin
                 catch (Exception e)
                 {
                     SimHub.Logging.Current.Info($"Connection test to connect to MQTT Broker {broker} failed. {e.InnerException?.Message ?? e.Message}");
-                    Properties.Settings.Default["lastConnectionSuccessful"] = false;
+                    MQTTSettings.Store["lastConnectionSuccessful"] = false;
                     return false;
                 }
 
                 IsConnected = client.IsConnected;
-                Properties.Settings.Default["lastConnectionSuccessful"] = client.IsConnected;
+                MQTTSettings.Store["lastConnectionSuccessful"] = client.IsConnected;
                 if (client.IsConnected)
                 {
                     SimHub.Logging.Current.Info($"Connection test to connect to MQTT Broker {broker} succeeded. Disconnecting...");
@@ -132,31 +141,15 @@ namespace User.MQTTPlugin
         private static void client_MqttMsgPublishReceived(object sender, MqttMsgPublishEventArgs e)
         {
             string payload = Encoding.UTF8.GetString(e.Message);
-            object obj;
-            try
+            object obj = MessageFormatter.ParsePayload(payload, out bool isJson);
+            if (!isJson)
             {
-                obj = JToken.Parse(payload);
-            }
-            catch (Exception)
-            {
-                obj = payload;
                 SimHub.Logging.Current.Info($"MQTT payload from topic {e.Topic} is not valid JSON; treating as plain string.");
             }
             string LogMessage = $"Received MQTT {payload} from topic {e.Topic}";
             SimHub.Logging.Current.Info(LogMessage);
 
-
-            //MQTTPlugin plugin = new MQTTPlugin();
-            //plugin.MqttMessage = payload;
-            DateTime localDate = DateTime.Now;
-            string timestamp = localDate.ToString(new CultureInfo("nl-NL"));
-
-            Dictionary<string, dynamic> dMessage = new Dictionary<string, dynamic>();
-            dMessage.Add("topic", e.Topic.ToString());
-            dMessage.Add("payload", obj);
-            dMessage.Add("timestamp", timestamp);
-            string sMessage = JsonConvert.SerializeObject(dMessage);
-            //plugin.MqttMessage = sMessage;
+            string sMessage = MessageFormatter.Format(e.Topic, obj, DateTime.Now);
             if (MQTTPlugin.Instance != null)
             {
                 MQTTPlugin.Instance.MqttMessage = sMessage;
@@ -183,7 +176,7 @@ namespace User.MQTTPlugin
         {
             IDictionary<string, string> settings = MQTTSettings.LoadSettings();
             string broker = settings["mqttserver"];
-            if (!int.TryParse(settings["mqttport"], out int port))
+            if (!SettingsRules.TryParsePort(settings["mqttport"], out int port))
             {
                 SimHub.Logging.Current.Info($"Invalid or missing MQTT port '{settings["mqttport"]}'. Aborting connect.");
                 return;
@@ -191,7 +184,7 @@ namespace User.MQTTPlugin
             string topic = settings["mqtttopic"];
             string username = settings["mqttuser"];
             string password = "";
-            bool useTls = settings.TryGetValue("mqtttls", out string tlsValue) && tlsValue == "True";
+            bool useTls = SettingsRules.IsTlsEnabled(settings);
             try
             {
                 password = Crypt.UnprotectString(settings["mqttpass"]);
@@ -202,13 +195,10 @@ namespace User.MQTTPlugin
             }
             string clientId = Guid.NewGuid().ToString();
 
-            Dictionary<string, string> MqttSettingsFound = settings
-                .Where(kvp => kvp.Key.IndexOf("mqtt") > -1 && kvp.Value != "")
-                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-            if (MqttSettingsFound.Count == 0)
+            int configuredSettingsCount = SettingsRules.CountConfiguredMqttSettings(settings);
+            if (configuredSettingsCount == 0)
             {
-                SimHub.Logging.Current.Info($"Found {MqttSettingsFound.Count} MQTT settings!");
+                SimHub.Logging.Current.Info($"Found {configuredSettingsCount} MQTT settings!");
                 return;
             }
 
@@ -283,8 +273,7 @@ namespace User.MQTTPlugin
                 return;
             }
 
-            int delayIndex = Math.Min(reconnectAttempt, BackoffSchedule.Length - 1);
-            int delaySeconds = BackoffSchedule[delayIndex];
+            int delaySeconds = GetBackoffDelaySeconds(reconnectAttempt);
 
             // Simple gate: only actually try every Nth tick matching the backoff delay,
             // since the timer itself ticks every 5s regardless of backoff stage.
@@ -296,7 +285,7 @@ namespace User.MQTTPlugin
             {
                 try
                 {
-                    Thread.Sleep(delaySeconds * 1000);
+                    SleepSeconds(delaySeconds);
                     ConnectAndSubscribe();
                 }
                 finally

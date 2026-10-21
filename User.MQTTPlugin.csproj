@@ -69,12 +69,17 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ActionsSerializer.cs" />
     <Compile Include="Crypt.cs" />
+    <Compile Include="MessageFormatter.cs" />
     <Compile Include="MQTTClient.cs" />
     <Compile Include="MQTTPlugin.cs" />
     <Compile Include="MQTTPluginSettings.cs" />
     <Compile Include="MQTTSettings.cs" />
     <Compile Include="Settings.cs" />
+    <Compile Include="SettingsRules.cs" />
+    <Compile Include="SettingsStore.cs" />
+    <Compile Include="SettingsViewLogic.cs" />
     <Compile Include="SettingsControl.xaml.cs">
       <DependentUpon>SettingsControl.xaml</DependentUpon>
     </Compile>

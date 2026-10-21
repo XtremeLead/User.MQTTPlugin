@@ -9,6 +9,7 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | Fase | Status | Opmerking |
 |---|---|---|
 | F0. Testproject | ✅ | Klassiek net48-project met MSTest 3.1.1 en `vstest.console` uit het pakket `Microsoft.TestPlatform`; commando's in CLAUDE.md |
+| F0b. Seams zonder gedragswijziging | ✅ | Toegevoegd op verzoek van de gebruiker, zie PLAN.md. 139 tests groen; handmatige controle in SimHub nog door de gebruiker |
 | F1. Snelle, veilige bugfixes | ⬜ | |
 | F2. Verbindingsbeheerder | ⬜ | |
 | F3. Acties naar de plugin | ⬜ | |
@@ -36,7 +37,7 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | A4 | Berichtverwerking los van bijwerkingen | F1/F2 | ⬜ |
 | A5 | Oude code en template-resten weg | F5 | ⬜ |
 | L1–L6 | Leesbaarheid | F1/F4/F5 | ⬜ |
-| T1–T5 | Testbaarheid | F1/F2/F4 | ⬜ |
+| T1–T5 | Testbaarheid | F0b/F2 | 🔄 T1 en T3 ✅ (F0b), T5 deels (tijdstip als parameter, `SleepSeconds`), T2 en T4 in F2 |
 
 ## Beslissingen
 
@@ -47,6 +48,18 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | D3 | Oude `SettingsControl` verwijderen? | Ja, in F5; `DeserializeDict` gaat in F3 naar de serializer-helper | 2026-10-21 |
 
 ## Log
+
+- **2026-10-21:** F0b afgerond (op verzoek van de gebruiker vóór F1 ingevoegd, zie PLAN.md). Er zijn nu 139 tests, en drie runs na elkaar slaagden allemaal. Alleen de Release-build is gemaakt.
+  - **Nieuwe pure helpers:**
+    - `MessageFormatter`: berichtverwerking, met het tijdstip als parameter.
+    - `ActionsSerializer`: de acties-(de)serialisatie. Het legacy `SettingsControl` houdt zijn eigen kopie tot F5.
+    - `SettingsRules`: de "settings found"-telling, de TLS-check en het parsen van de poort.
+    - `SettingsViewLogic`: statusteksten, de poortwissel bij TLS, de toetsfilter voor de poort, de veldtekst van acties, de volledigheidscheck en het opslagbericht.
+    - `MQTTClient.GetBackoffDelaySeconds`.
+  - **Seams:** `ISettingsStore`/`PropertiesSettingsStore` als `MQTTSettings.Store` (T3), `MQTTSettings.Reconnect` en `MQTTClient.SleepSeconds`. Alle directe toegang tot `Properties.Settings.Default` in `MQTTClient`, `MQTTSettings` en `SettingsControlV2` loopt nu via `Store`.
+  - **Nieuw vastgelegd:** de volledige backoff-reeks 2, 5, 10, 30, 60, 60, … (een mislukte poging zet de teller niet terug), dat B7 een verse installatie "Connection failed" laat tonen, en dat een opgeslagen wijziging bij elke volgende Save opnieuw wordt weggeschreven (de staging-lijst wordt niet gewist). Verder dat de poortcontrole geen bereik heeft (`-1` en `70000` worden geaccepteerd), dat `"true"` in kleine letters niet als TLS telt, en dat Backspace en Delete niet als poorttoets gelden.
+  - **Timestamp:** heeft geen voorloopnullen (`4-3-2026 05:06:07`). De test uit de vorige stap rekende op `dd-MM-yyyy` en zou op dagen 1–9 zijn mislukt; die is aangepast.
+  - **Nog niet testbaar:** verbinden en abonneren bij een live verbinding (B3, wacht op T2 in F2), `Init`/`End`/`AddAction` (hebben de `PluginManager` van SimHub nodig), en de WPF-bediening zelf.
 
 - **2026-10-21:** Karakteriseringstests voor de huidige code toegevoegd, vóór F1 en zonder wijzigingen aan de productiecode. Er zijn nu 53 tests, en drie runs na elkaar slaagden allemaal.
   - **Gedekt:** de `Crypt`-paden, het XML-formaat van `mqttactions` (vastgelegd als golden string), `MQTTSettings`, de berichtverwerking in `client_MqttMsgPublishReceived`, de vroege exits van `ConnectAndSubscribe`, `Publish` zonder verbinding en de watchdog-guards.

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.Serialization;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -25,39 +24,25 @@ namespace User.MQTTPlugin.Tests
             "  </KeyValueOfstringValueTupleOfstringstringU6ho3Bhd>\r\n" +
             "</ArrayOfKeyValueOfstringValueTupleOfstringstringU6ho3Bhd>";
 
-        private static string Serialize(Dictionary<string, ValueTuple<string, string>> actions)
-        {
-            // SerializeDict is a private instance method of the WPF control that doesn't use
-            // instance state, so it can run on an uninitialized instance.
-            object control = FormatterServices.GetUninitializedObject(typeof(SettingsControlV2));
-            MethodInfo method = typeof(SettingsControlV2).GetMethod("SerializeDict", BindingFlags.NonPublic | BindingFlags.Instance);
-            return (string)method.Invoke(control, new object[] { actions });
-        }
-
-        private static Dictionary<string, ValueTuple<string, string>> Deserialize(string xml)
-        {
-            return (Dictionary<string, ValueTuple<string, string>>)SettingsControl.DeserializeDict(xml, typeof(Dictionary<string, ValueTuple<string, string>>));
-        }
-
         [TestMethod]
-        public void SerializeDict_SingleAction_ProducesIndentedDataContractXml()
+        public void Serialize_SingleAction_ProducesIndentedDataContractXml()
         {
             var actions = new Dictionary<string, ValueTuple<string, string>> { { "ToggleClimate", ("simhub/climate", "toggle") } };
 
-            Assert.AreEqual(SingleActionXml, Serialize(actions));
+            Assert.AreEqual(SingleActionXml, ActionsSerializer.Serialize(actions));
         }
 
         [TestMethod]
-        public void DeserializeDict_StoredXml_ReturnsActions()
+        public void Deserialize_StoredXml_ReturnsActions()
         {
-            Dictionary<string, ValueTuple<string, string>> actions = Deserialize(SingleActionXml);
+            Dictionary<string, ValueTuple<string, string>> actions = ActionsSerializer.Deserialize(SingleActionXml);
 
             Assert.AreEqual(1, actions.Count);
             Assert.AreEqual(("simhub/climate", "toggle"), actions["ToggleClimate"]);
         }
 
         [TestMethod]
-        public void SerializeDict_ThenDeserializeDict_KeepsSpecialCharactersAndOrder()
+        public void Serialize_ThenDeserialize_KeepsSpecialCharactersAndOrder()
         {
             var actions = new Dictionary<string, ValueTuple<string, string>>
             {
@@ -66,7 +51,7 @@ namespace User.MQTTPlugin.Tests
                 { "Empty", ("", "") },
             };
 
-            Dictionary<string, ValueTuple<string, string>> result = Deserialize(Serialize(actions));
+            Dictionary<string, ValueTuple<string, string>> result = ActionsSerializer.Deserialize(ActionsSerializer.Serialize(actions));
 
             CollectionAssert.AreEqual(actions.Keys.ToList(), result.Keys.ToList());
             foreach (var action in actions)
@@ -76,24 +61,33 @@ namespace User.MQTTPlugin.Tests
         }
 
         [TestMethod]
-        public void SerializeDict_ThenDeserializeDict_EmptyDictionary_ReturnsEmpty()
+        public void Serialize_ThenDeserialize_EmptyDictionary_ReturnsEmpty()
         {
-            var result = Deserialize(Serialize(new Dictionary<string, ValueTuple<string, string>>()));
+            var result = ActionsSerializer.Deserialize(ActionsSerializer.Serialize(new Dictionary<string, ValueTuple<string, string>>()));
 
             Assert.AreEqual(0, result.Count);
         }
 
         [TestMethod]
-        public void DeserializeDict_InvalidXml_ThrowsSerializationException()
+        public void Deserialize_InvalidXml_ThrowsSerializationException()
         {
-            Assert.ThrowsException<SerializationException>(() => Deserialize("<not-closed>"));
+            Assert.ThrowsException<SerializationException>(() => ActionsSerializer.Deserialize("<not-closed>"));
         }
 
         // LoadExistingActions skips an empty setting, so this path isn't reached from the UI.
         [TestMethod]
-        public void DeserializeDict_EmptyString_ThrowsXmlException()
+        public void Deserialize_EmptyString_ThrowsXmlException()
         {
-            Assert.ThrowsException<System.Xml.XmlException>(() => Deserialize(""));
+            Assert.ThrowsException<System.Xml.XmlException>(() => ActionsSerializer.Deserialize(""));
+        }
+
+        // The legacy SettingsControl keeps its own copy until F5 removes it (D3).
+        [TestMethod]
+        public void LegacyDeserializeDict_StoredXml_ReturnsSameActions()
+        {
+            var actions = (Dictionary<string, ValueTuple<string, string>>)SettingsControl.DeserializeDict(SingleActionXml, typeof(Dictionary<string, ValueTuple<string, string>>));
+
+            CollectionAssert.AreEqual(ActionsSerializer.Deserialize(SingleActionXml).ToList(), actions.ToList());
         }
     }
 }

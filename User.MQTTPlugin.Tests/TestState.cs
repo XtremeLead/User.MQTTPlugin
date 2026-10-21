@@ -1,17 +1,30 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Threading.Tasks;
 
 namespace User.MQTTPlugin.Tests
 {
     /// <summary>
-    /// Resets the static state of the plugin between tests. The production code keeps its
-    /// state in private static fields, so this goes through reflection until F1/F2 add seams.
-    /// Properties.Settings.Default is only changed in memory and never saved: Reload() restores
-    /// the test host's own settings, never SimHub's user.config.
+    /// Resets the static state of the plugin between tests and swaps in test doubles: a
+    /// FakeSettingsStore, a reconnect that does nothing and a watchdog sleep that returns at once.
+    /// Private static fields are reached through reflection until F2 replaces them.
     /// </summary>
     internal static class TestState
     {
+        // The production wiring, captured before the first Reset() replaces it.
+        public static readonly ISettingsStore OriginalStore = MQTTSettings.Store;
+        public static readonly Func<Task> OriginalReconnect = MQTTSettings.Reconnect;
+        public static readonly Action<int> OriginalSleepSeconds = MQTTClient.SleepSeconds;
+
+        // An explicit static constructor makes the fields above initialize before the first
+        // Reset() runs, instead of lazily at their first use.
+        static TestState()
+        {
+        }
+
+        public static FakeSettingsStore Store => (FakeSettingsStore)MQTTSettings.Store;
+
         public static void Reset()
         {
             MQTTClient.StopWatchdog();
@@ -19,8 +32,10 @@ namespace User.MQTTPlugin.Tests
             MQTTClient.IsConnected = false;
             SetStatic(typeof(MQTTClient), "reconnectAttempt", 0);
             SetStatic(typeof(MQTTClient), "reconnecting", false);
+            MQTTClient.SleepSeconds = seconds => { };
             ((IDictionary<string, string>)GetStatic(typeof(MQTTSettings), "SETTINGS")).Clear();
-            Properties.Settings.Default.Reload();
+            MQTTSettings.Store = new FakeSettingsStore();
+            MQTTSettings.Reconnect = () => Task.CompletedTask;
             SetPluginInstance(null);
         }
 

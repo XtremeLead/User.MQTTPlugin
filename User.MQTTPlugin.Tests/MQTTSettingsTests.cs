@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Configuration;
+using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace User.MQTTPlugin.Tests
@@ -14,32 +15,32 @@ namespace User.MQTTPlugin.Tests
         public void Cleanup() => TestState.Reset();
 
         [TestMethod]
-        public void LoadSettings_Defaults_ReturnsEverySettingAsString()
+        public void Store_ByDefault_IsPropertiesSettings()
+        {
+            Assert.IsInstanceOfType(TestState.OriginalStore, typeof(PropertiesSettingsStore));
+        }
+
+        [TestMethod]
+        public void Reconnect_ByDefault_IsConnectAndSubscribeAsync()
+        {
+            Assert.AreEqual(typeof(MQTTClient).GetMethod("ConnectAndSubscribeAsync"), TestState.OriginalReconnect.Method);
+        }
+
+        [TestMethod]
+        public void LoadSettings_ReturnsEverySettingAsString()
         {
             IDictionary<string, string> settings = MQTTSettings.LoadSettings();
 
-            var expected = new Dictionary<string, string>
-            {
-                { "mqttserver", "" },
-                { "mqttport", "" },
-                { "mqttuser", "" },
-                { "mqttpass", "" },
-                { "mqtttopic", "" },
-                { "mqttactions", "" },
-                { "mqtttls", "False" },
-                { "lastConnectionSuccessful", "False" },
-            };
-            Assert.AreEqual(expected.Count, settings.Count);
-            foreach (var setting in expected)
-            {
-                Assert.AreEqual(setting.Value, settings[setting.Key], setting.Key);
-            }
+            Assert.AreEqual(8, settings.Count);
+            Assert.AreEqual("", settings["mqttserver"]);
+            Assert.AreEqual("False", settings["mqtttls"]);
+            Assert.AreEqual("False", settings["lastConnectionSuccessful"]);
         }
 
         [TestMethod]
         public void LoadSettings_BooleanSettingTrue_ReturnsTrueText()
         {
-            Properties.Settings.Default["mqtttls"] = true;
+            TestState.Store["mqtttls"] = true;
 
             Assert.AreEqual("True", MQTTSettings.LoadSettings()["mqtttls"]);
         }
@@ -47,7 +48,7 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void LoadSettings_StringSetting_ReturnsValue()
         {
-            Properties.Settings.Default["mqttserver"] = "broker.example";
+            TestState.Store["mqttserver"] = "broker.example";
 
             Assert.AreEqual("broker.example", MQTTSettings.LoadSettings()["mqttserver"]);
         }
@@ -55,7 +56,7 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void GetSetting_ReturnsValueAsString()
         {
-            Properties.Settings.Default["mqttport"] = "1883";
+            TestState.Store["mqttport"] = "1883";
 
             Assert.AreEqual("1883", new MQTTSettings().GetSetting("mqttport"));
             Assert.AreEqual("False", new MQTTSettings().GetSetting("mqtttls"));
@@ -67,6 +68,42 @@ namespace User.MQTTPlugin.Tests
             MQTTSettings.RememberSetting("mqttserver", "broker.example");
 
             Assert.AreEqual("", MQTTSettings.LoadSettings()["mqttserver"]);
+            Assert.AreEqual(0, TestState.Store.SaveCount);
+        }
+
+        [TestMethod]
+        public void SaveSettingsAsync_StagedStrings_WritesSavesOnceThenReconnects()
+        {
+            var steps = new List<string>();
+            var reconnectTask = new TaskCompletionSource<bool>().Task;
+            MQTTSettings.Reconnect = () =>
+            {
+                steps.Add("reconnect after " + TestState.Store.SaveCount + " save(s)");
+                return reconnectTask;
+            };
+            MQTTSettings.RememberSetting("mqttserver", "broker.example");
+            MQTTSettings.RememberSetting("mqttport", "1883");
+
+            Task result = MQTTSettings.SaveSettingsAsync();
+
+            Assert.AreEqual("broker.example", TestState.Store["mqttserver"]);
+            Assert.AreEqual("1883", TestState.Store["mqttport"]);
+            CollectionAssert.AreEqual(new[] { "reconnect after 1 save(s)" }, steps);
+            Assert.AreSame(reconnectTask, result);
+        }
+
+        // Staged values are never cleared, so a later save writes them again.
+        [TestMethod]
+        public void SaveSettingsAsync_SecondSave_WritesEarlierStagedValuesAgain()
+        {
+            MQTTSettings.RememberSetting("mqttserver", "first.example");
+            MQTTSettings.SaveSettingsAsync();
+            TestState.Store["mqttserver"] = "changed.elsewhere";
+
+            MQTTSettings.SaveSettingsAsync();
+
+            Assert.AreEqual("first.example", TestState.Store["mqttserver"]);
+            Assert.AreEqual(2, TestState.Store.SaveCount);
         }
 
         // Current behaviour (B2): the UI stages mqtttls as text, but the setting is a bool.
@@ -74,11 +111,15 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void SaveSettingsAsync_TlsStagedAsText_ThrowsAndKeepsFailingOnRetry()
         {
+            int reconnects = 0;
+            MQTTSettings.Reconnect = () => { reconnects++; return Task.CompletedTask; };
             MQTTSettings.RememberSetting("mqtttls", "True");
 
             Assert.ThrowsException<SettingsPropertyWrongTypeException>(() => MQTTSettings.SaveSettingsAsync());
-            Assert.AreEqual(false, Properties.Settings.Default["mqtttls"]);
             Assert.ThrowsException<SettingsPropertyWrongTypeException>(() => MQTTSettings.SaveSettingsAsync());
+            Assert.AreEqual(false, TestState.Store["mqtttls"]);
+            Assert.AreEqual(0, TestState.Store.SaveCount);
+            Assert.AreEqual(0, reconnects);
         }
     }
 }
