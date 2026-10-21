@@ -62,7 +62,13 @@ Unit tests are required. Use **MSTest**.
 
 ## Project skills
 
-[.claude/skills/](.claude/skills/) holds third-party skills installed from skills.sh. [skills-lock.json](skills-lock.json) records their source and hash; update them with `npx skills update -p`.
+[.claude/skills/](.claude/skills/) holds third-party skills installed from skills.sh. [skills-lock.json](skills-lock.json) records their source and hash; update them with `npx skills update -p`. The CLI may install a skill into `.agents/skills/` and leave only a junction in `.claude/skills/`. Replace that junction with a real copy of the folder and delete `.agents/`, so every skill is an ordinary folder under `.claude/skills/`.
+- `code-testing` (dotnet/skills): the entry skill for designing and writing new tests; use `writing-mstest-tests` alongside it for the MSTest APIs.
+  - Our per-phase test work counts as its **focused** scope, so do it inline. Keep any broad-scope `research.md`/`plan.md` in the scratchpad, never in the repo.
+  - It refers to agents (`test-engineer`, `code-testing-*`) and skills (`code-testing-extensions`, `test-gap-analysis`, `assertion-quality`, `run-tests`) that aren't installed. Skip those references; don't spawn substitutes for them.
+  - Its C# examples use target-typed `new()`, which isn't C# 7.3.
+  - It says to prefer mocking, but no mocking library is installed. Use hand-written fakes behind the interfaces from T2–T5 unless a library is agreed on.
+  - Its rule "fix the assertion, not the production code" applies to tests of existing behaviour. In bug-fix phases the tests pin the fixed behaviour from [PLAN.md](PLAN.md); if a test shows the plan is wrong, report it instead of bending the test.
 - `csharp-async` (github/awesome-copilot): async/await guidance. Its `ValueTask` and `IAsyncEnumerable` suggestions need extra NuGet packages on .NET Framework 4.8, and its `ConfigureAwait(false)` advice doesn't apply to the UI handlers (see above).
 - `mqtt-development` (mindrally/skills): general MQTT guidance (QoS, LWT, sessions, TLS). It is not specific to M2Mqtt, so check its suggestions against the M2Mqtt 4.3 API.
-- `writing-mstest-tests` (dotnet/skills): MSTest conventions and assertion APIs, gated by the installed MSTest version. Use it as guidance when writing tests too, even though its description defers new-test design to a `code-testing` skill that isn't installed. Some examples use newer C# such as collection expressions (`[ ... ]`); write tests in C# 7.3. It says to verify with `dotnet test`; for this classic non-SDK project, use the build and test commands recorded under Unit tests instead.
+- `writing-mstest-tests` (dotnet/skills): MSTest conventions and assertion APIs, gated by the installed MSTest version. New-test design goes through `code-testing`. Some examples use newer C# such as collection expressions (`[ ... ]`); write tests in C# 7.3. It says to verify with `dotnet test`; for this classic non-SDK project, use the build and test commands recorded under Unit tests instead.

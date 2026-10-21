@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "code-testing": {
+      "source": "dotnet/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/dotnet-test/skills/code-testing/SKILL.md",
+      "computedHash": "2ca3c087777e941385f96f1a234ba77dff916a73fb2cc139f40b84c47491b5ec"
+    },
     "csharp-async": {
       "source": "github/awesome-copilot",
       "sourceType": "github",

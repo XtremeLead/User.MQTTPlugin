@@ -48,6 +48,7 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 
 ## Log
 
+- **2026-10-21:** Skill `code-testing` (dotnet/skills) geïnstalleerd in `.claude/skills/` voor het ontwerpen van nieuwe tests. De kanttekeningen staan in CLAUDE.md onder "Project skills".
 - **2026-10-21:** Beslissingen D1, D2 en D3 genomen (zie tabel). B5 bevestigd: op de ontwikkel-pc staan 6 `user.config`-bestanden met MQTT-instellingen in steeds andere bedrijfsmappen (`SimHub`, `뙆`, `삎`, `퉡`, `퍒`, `퍒kak`). SimHub wijzigt per release de CompanyName, de versiemap blijft `1.0.0.0`, en `Upgrade()` lost het daarom niet op. `PluginsData\Common\MQTTPlugin.GeneralSettings.json` heeft updates wel overleefd.
 - **2026-10-21:** Codebase geanalyseerd en [PLAN.md](PLAN.md) opgesteld. B1, B2 en het lege-wachtwoordpad van B9 zijn met experimenten bevestigd:
   - B1: de `MqttClient`-constructor gooit `SocketException` bij een onbekende host.
