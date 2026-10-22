@@ -10,7 +10,7 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 |---|---|---|
 | F0. Testproject | ✅ | Klassiek net48-project met MSTest 3.1.1 en `vstest.console` uit het pakket `Microsoft.TestPlatform`; commando's in CLAUDE.md |
 | F0b. Seams zonder gedragswijziging | ✅ | Toegevoegd op verzoek van de gebruiker, zie PLAN.md. 139 tests groen en handmatig gecontroleerd in SimHub |
-| F1. Snelle, veilige bugfixes | ⬜ | |
+| F1. Snelle, veilige bugfixes | ✅ | 158 tests groen; B1, B2 en acties handmatig bevestigd in SimHub |
 | F2. Verbindingsbeheerder | ⬜ | |
 | F3. Acties naar de plugin | ⬜ | |
 | F4. Instellingenmodel en opslag | ⬜ | |
@@ -21,23 +21,23 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 
 | Code | Omschrijving | Fase | Status |
 |---|---|---|---|
-| B1 | DNS-fout bij opstarten zet de plugin uit | F1 | ⬜ |
-| B2 | TLS-vinkje blokkeert het opslaan | F1 | ⬜ |
+| B1 | DNS-fout bij opstarten zet de plugin uit | F1 | ✅ (ook handmatig bevestigd in SimHub) |
+| B2 | TLS-vinkje blokkeert het opslaan | F1 | ✅ (ook handmatig bevestigd in SimHub) |
 | B3 | Test verbreekt de live verbinding, Save past niet toe | F2 | ⬜ |
 | B4 | Acties pas actief na openen van de instellingen | F3 | ⬜ |
 | B5 | Instellingen weg na SimHub-update | F4 | ⬜ |
 | B6 | Race conditions rond de verbinding | F2 | ⬜ |
-| B7 | "Please provide MQTT settings" wordt nooit getoond | F1 | ⬜ |
-| B8 | `AttachDelegate` bij elk bericht | F1 | ⬜ |
-| B9 | Foutpaden rond het wachtwoord | F1 | ⬜ |
-| B10 | Ruis in het log, stille publish | F1 | ⬜ |
-| B11 | JSON-payloads worden herschreven (tijdzone, decimalen) | F1 | ⬜ |
+| B7 | "Please provide MQTT settings" wordt nooit getoond | F1 | ✅ |
+| B8 | `AttachDelegate` bij elk bericht | F1 | ✅ |
+| B9 | Foutpaden rond het wachtwoord | F1 | ✅ |
+| B10 | Ruis in het log, stille publish | F1 | ✅ |
+| B11 | JSON-payloads worden herschreven (tijdzone, decimalen) | F1 | ✅ |
 | A1 | Verbindingsbeheerder in plaats van statische toestand | F2 | ⬜ |
 | A2 | Eén getypeerd instellingenmodel | F4 | ⬜ |
 | A3 | Acties bij de plugin | F3 | ⬜ |
-| A4 | Berichtverwerking los van bijwerkingen | F1/F2 | ⬜ |
+| A4 | Berichtverwerking los van bijwerkingen | F1/F2 | 🔄 formatter en `timestampIso` klaar; event i.p.v. `Instance` in F2 |
 | A5 | Oude code en template-resten weg | F5 | ⬜ |
-| L1–L6 | Leesbaarheid | F1/F4/F5 | ⬜ |
+| L1–L6 | Leesbaarheid | F1/F4/F5 | 🔄 L6 ✅ (F1, behalve het oude `SettingsControl`, dat in F5 verdwijnt) |
 | T1–T5 | Testbaarheid | F0b/F2 | 🔄 T1 en T3 ✅ (F0b), T5 deels (tijdstip als parameter, `SleepSeconds`), T2 en T4 in F2 |
 
 ## Beslissingen
@@ -49,6 +49,30 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | D3 | Oude `SettingsControl` verwijderen? | Ja, in F5; `DeserializeDict` gaat in F3 naar de serializer-helper | 2026-10-21 |
 
 ## Log
+
+- **2026-10-22:** D2 bevestigd. De gebruiker gebruikt zelf geen timestamps, maar `timestamp` en `timestampIso` blijven voor andere gebruikers van de plugin. De plugin vult ze alleen (`MessageFormatter.Format`) en leest ze nergens; ze staan voor dashboardbouwers beschreven in de README. In F6 moet de README `timestampIso` en het ongewijzigd doorgeven van payloads (B11) beschrijven.
+
+- **2026-10-22:** F1 afgerond. De gebruiker heeft B2 bevestigd in SimHub:
+  - TLS aan en uit zetten, Test en Save schrijft `mqtttls` naar `user.config`.
+  - Met TLS aan via `user.config` blijft de plugin opnieuw verbinden met de broker, die geen TLS heeft.
+  - TLS uit in SimHub, Test en Save geeft weer verbinding.
+
+  Acties werken nog. Het dashboard (nieuwe payload-weergave en `timestampIso`) is niet apart genoemd.
+
+- **2026-10-22:** B1 handmatig bevestigd in SimHub. Met `mqttserver=broker.invalid` in de actieve `user.config` toont het log "MQTT watchdog started" en "Connecting MQTT on broker.invalid", gevolgd door de Warn "Failed to connect … No such host is known" en "attempting reconnect (attempt 1, backoff 2s)". Na Test en Save met de juiste broker is de verbinding terug. `mqtttls` ontbreekt in `user.config`, omdat de instelling door B2 nooit is opgeslagen. B2 wordt zonder TLS-broker getest door het vinkje aan en weer uit te zetten, en dan Test en Save te doen.
+
+- **2026-10-22:** Aanvulling op B5: de huidige `SimHubWPF.exe` heeft CompanyName `SimHub` (versie 1.0.0.0), dus de actieve `user.config` staat nu weer in `%LOCALAPPDATA%\SimHub\SimHubWPF.exe_Url_…\1.0.0.0\`. De vorige release gebruikte de map `퉡`. Wijzigingen in een oude map worden genegeerd. Voor handmatige tests: kies de map via de CompanyName van het exe-bestand, niet via de laatste wijzigingstijd.
+
+- **2026-10-21:** F1 gebouwd. Er zijn nu 158 tests, en drie runs na elkaar slaagden allemaal. De tests met `Current behaviour (Bx)` zijn omgezet naar het gerepareerde gedrag.
+  - **B1:** de client wordt binnen de `try` aangemaakt, in zowel `ConnectMQTT` als `TestConnectionAsync`. Een DNS-fout geeft nu een Warn en een mislukte verbinding, in plaats van een exceptie. `Init` koppelt eerst de properties en start de watchdog, en verbindt pas daarna (in een `try`). De reconnect-taak van de watchdog vangt en logt fouten.
+  - **B2:** `SaveSettingsAsync` zet staged tekst om naar het type van de instelling, zodat `"True"` een bool wordt. Bij een fout wordt niets geschreven, wordt de staging gewist, volgt een Error-log en wordt de exceptie opnieuw gegooid. De Save-knop toont dan "Could not save the settings".
+  - **B7:** "instellingen aanwezig" betekent nu "broker ingevuld" (`SettingsRules.HasBrokerConfigured`, in plaats van de telling). `ConnectAndSubscribe` controleert dat vóór de poort.
+  - **B8:** `AttachDelegate` is uit de setter gehaald. Het veld is `volatile`.
+  - **B9:** `UnprotectString` gooit nooit meer. Een lege waarde geeft zonder log `""`, en ongeldige of onontsleutelbare waarden geven `""` met een Error. Mislukt versleutelen slaat `""` op.
+  - **B10 en L6:** ontvangen en gepubliceerde berichten worden alleen nog op Debug gelogd. Een publish zonder verbinding geeft een Warn. Fouten bij verbinden staan op Warn en dataverlies op Error. Het oude `SettingsControl` is niet aangepast (D3).
+  - **B11:** payloads worden geparset met `DateParseHandling.None` en `FloatParseHandling.Decimal`. Een getal buiten het bereik van `decimal` (bijvoorbeeld `1e400`) wordt nu als tekst doorgegeven.
+  - **A4 (deels) en D2:** het veld `timestampIso` is toegevoegd. `MessageFormatter.Format` krijgt een `DateTimeOffset`.
+  - **Testhulp:** `LogCapture` (een log4net `MemoryAppender`) controleert logniveaus zonder T4.
 
 - **2026-10-21:** De gebruiker heeft F0b in SimHub gecontroleerd (Debug-build, instellingenpagina): alles werkt nog. B11 (JSON-payloads worden herschreven) is met akkoord van de gebruiker aan PLAN.md toegevoegd en ingedeeld in F1.
 

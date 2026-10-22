@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 
 namespace User.MQTTPlugin
 {
@@ -9,11 +8,12 @@ namespace User.MQTTPlugin
     internal static class SettingsRules
     {
         /// <summary>
-        /// Counts the settings whose name contains "mqtt" and whose value isn't empty.
+        /// Whether the user has provided MQTT settings: a broker is the one setting that has
+        /// no usable default.
         /// </summary>
-        internal static int CountConfiguredMqttSettings(IDictionary<string, string> settings)
+        internal static bool HasBrokerConfigured(IDictionary<string, string> settings)
         {
-            return settings.Count(kvp => kvp.Key.IndexOf("mqtt") > -1 && kvp.Value != "");
+            return settings.TryGetValue("mqttserver", out string server) && !string.IsNullOrEmpty(server);
         }
 
         internal static bool IsTlsEnabled(IDictionary<string, string> settings)

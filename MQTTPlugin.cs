@@ -29,7 +29,8 @@ namespace User.MQTTPlugin
         /// </summary>
         public string LeftMenuTitle => "MQTT plugin";
 
-        private string mqttMessage = "";
+        // Written by the M2Mqtt receive thread, read by SimHub through the delegate attached in Init.
+        private volatile string mqttMessage = "";
 
         public string MqttMessage
         {
@@ -39,10 +40,7 @@ namespace User.MQTTPlugin
             }
             set
             {
-
-                //mqttMessage = timestamp + ": " + value;
                 mqttMessage = value;
-                this.AttachDelegate("MQTTMessage", () => mqttMessage);
             }
         }
         /// <summary>
@@ -89,7 +87,7 @@ namespace User.MQTTPlugin
             }
             catch (Exception e)
             {
-                SimHub.Logging.Current.Info($"Error while disconnecting MQTT client during shutdown: {e.Message}");
+                SimHub.Logging.Current.Warn($"Error while disconnecting MQTT client during shutdown: {e.Message}");
             }
 
             if (Instance == this)
@@ -122,10 +120,6 @@ namespace User.MQTTPlugin
 
             Instance = this;
 
-            // always try to connect
-            MQTTClient.ConnectAndSubscribe();
-            MQTTClient.StartWatchdog();
-
             // Load settings
             Settings = this.ReadCommonSettings<MQTTPluginSettings>("GeneralSettings", () => new MQTTPluginSettings());
 
@@ -134,6 +128,16 @@ namespace User.MQTTPlugin
 
             this.AttachDelegate("MQTTMessage", () => mqttMessage);
 
+            // Start the watchdog before connecting, so a failed first connect is retried.
+            MQTTClient.StartWatchdog();
+            try
+            {
+                MQTTClient.ConnectAndSubscribe();
+            }
+            catch (Exception e)
+            {
+                SimHub.Logging.Current.Error($"MQTT connect during startup failed: {e.Message}");
+            }
         }
 
         public void AddAction(string name, string topic, string message)

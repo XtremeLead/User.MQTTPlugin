@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Threading.Tasks;
@@ -106,20 +107,59 @@ namespace User.MQTTPlugin.Tests
             Assert.AreEqual(2, TestState.Store.SaveCount);
         }
 
-        // Current behaviour (B2): the UI stages mqtttls as text, but the setting is a bool.
-        // Saving throws before Save() and the staged value stays, so every later save fails too.
+        // B2: the UI stages mqtttls as text; it is converted to the bool the setting expects.
         [TestMethod]
-        public void SaveSettingsAsync_TlsStagedAsText_ThrowsAndKeepsFailingOnRetry()
+        [DataRow("True", true, DisplayName = "True")]
+        [DataRow("False", false, DisplayName = "False")]
+        public void SaveSettingsAsync_TlsStagedAsText_SavesAsBool(string staged, bool expected)
         {
             int reconnects = 0;
             MQTTSettings.Reconnect = () => { reconnects++; return Task.CompletedTask; };
-            MQTTSettings.RememberSetting("mqtttls", "True");
+            TestState.Store["mqtttls"] = !expected;
+            MQTTSettings.RememberSetting("mqtttls", staged);
 
-            Assert.ThrowsException<SettingsPropertyWrongTypeException>(() => MQTTSettings.SaveSettingsAsync());
-            Assert.ThrowsException<SettingsPropertyWrongTypeException>(() => MQTTSettings.SaveSettingsAsync());
+            MQTTSettings.SaveSettingsAsync();
+
+            Assert.AreEqual(expected, TestState.Store["mqtttls"]);
+            Assert.AreEqual(1, TestState.Store.SaveCount);
+            Assert.AreEqual(1, reconnects);
+        }
+
+        // B2: a value that can't be converted stops the whole save: nothing is written, the
+        // staged values are discarded so the next save isn't blocked, and the error is logged.
+        [TestMethod]
+        public void SaveSettingsAsync_UnconvertibleValue_WritesNothingAndDiscardsStaging()
+        {
+            int reconnects = 0;
+            MQTTSettings.Reconnect = () => { reconnects++; return Task.CompletedTask; };
+            MQTTSettings.RememberSetting("mqttserver", "broker.example");
+            MQTTSettings.RememberSetting("mqtttls", "yes");
+
+            using (var log = new LogCapture())
+            {
+                Assert.ThrowsException<FormatException>(() => MQTTSettings.SaveSettingsAsync());
+                Assert.IsTrue(log.Contains(log4net.Core.Level.Error, "Could not save MQTT settings"));
+            }
+            Assert.AreEqual("", TestState.Store["mqttserver"]);
             Assert.AreEqual(false, TestState.Store["mqtttls"]);
             Assert.AreEqual(0, TestState.Store.SaveCount);
             Assert.AreEqual(0, reconnects);
+
+            MQTTSettings.SaveSettingsAsync();
+
+            Assert.AreEqual("", TestState.Store["mqttserver"]);
+            Assert.AreEqual(1, TestState.Store.SaveCount);
+        }
+
+        [TestMethod]
+        public void SaveSettingsAsync_UnknownSetting_ThrowsNotFoundAndWritesNothing()
+        {
+            MQTTSettings.RememberSetting("mqttserver", "broker.example");
+            MQTTSettings.RememberSetting("doesNotExist", "x");
+
+            Assert.ThrowsException<SettingsPropertyNotFoundException>(() => MQTTSettings.SaveSettingsAsync());
+            Assert.AreEqual("", TestState.Store["mqttserver"]);
+            Assert.AreEqual(0, TestState.Store.SaveCount);
         }
     }
 }

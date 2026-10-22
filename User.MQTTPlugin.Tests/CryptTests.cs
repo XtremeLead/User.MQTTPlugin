@@ -33,26 +33,58 @@ namespace User.MQTTPlugin.Tests
             Assert.ThrowsException<ArgumentNullException>(() => Crypt.ProtectString(null));
         }
 
-        // Current behaviour (B9): the stored default password is "", decryption fails and
-        // UnprotectString throws instead of returning an empty password.
+        // B9: the stored default password is "". It means "no password", so there is nothing
+        // to decrypt and nothing to log.
         [TestMethod]
-        public void UnprotectString_EmptyStoredValue_ThrowsArgumentNullException()
+        public void UnprotectString_EmptyStoredValue_ReturnsEmptyWithoutLogging()
         {
-            Assert.ThrowsException<ArgumentNullException>(() => Crypt.UnprotectString(""));
+            using (var log = new LogCapture())
+            {
+                Assert.AreEqual("", Crypt.UnprotectString(""));
+                Assert.AreEqual(0, log.Events.Count);
+            }
         }
 
         [TestMethod]
-        public void UnprotectString_ValueNotProtectedByThisUser_ThrowsArgumentNullException()
+        public void UnprotectString_Null_ReturnsEmpty()
+        {
+            Assert.AreEqual("", Crypt.UnprotectString(null));
+        }
+
+        [TestMethod]
+        public void UnprotectString_ValueNotProtectedByThisUser_ReturnsEmptyAndLogsError()
         {
             string notProtected = Convert.ToBase64String(new byte[] { 1, 2, 3, 4, 5, 6, 7, 8 });
 
-            Assert.ThrowsException<ArgumentNullException>(() => Crypt.UnprotectString(notProtected));
+            using (var log = new LogCapture())
+            {
+                Assert.AreEqual("", Crypt.UnprotectString(notProtected));
+                Assert.IsTrue(log.Contains(log4net.Core.Level.Error, "Failed to decrypt MQTT password"));
+            }
         }
 
         [TestMethod]
-        public void UnprotectString_InvalidBase64_ThrowsFormatException()
+        public void UnprotectString_InvalidBase64_ReturnsEmptyAndLogsError()
         {
-            Assert.ThrowsException<FormatException>(() => Crypt.UnprotectString("not base64!"));
+            using (var log = new LogCapture())
+            {
+                Assert.AreEqual("", Crypt.UnprotectString("not base64!"));
+                Assert.IsTrue(log.Contains(log4net.Core.Level.Error, "not valid"));
+            }
+        }
+
+        // B9: when encryption fails, Protect returns null; that is stored as "" (no password)
+        // instead of throwing in the PasswordChanged handler.
+        [TestMethod]
+        public void ToStoredValue_EncryptionFailed_ReturnsEmpty()
+        {
+            Assert.AreEqual("", Crypt.ToStoredValue(null));
+        }
+
+        [TestMethod]
+        public void ToStoredValue_EncryptedBytes_ReturnsBase64()
+        {
+            Assert.AreEqual("AQID", Crypt.ToStoredValue(new byte[] { 1, 2, 3 }));
         }
     }
 }

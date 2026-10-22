@@ -11,6 +11,17 @@ namespace User.MQTTPlugin.Tests
             Assert.AreEqual("", new MQTTPlugin().MqttMessage);
         }
 
+        // B8: setting the message only stores it; it doesn't need a PluginManager.
+        [TestMethod]
+        public void MqttMessage_Set_StoresValueWithoutPluginManager()
+        {
+            var plugin = new MQTTPlugin();
+
+            plugin.MqttMessage = "{\"payload\":\"on\"}";
+
+            Assert.AreEqual("{\"payload\":\"on\"}", plugin.MqttMessage);
+        }
+
         [TestMethod]
         public void LeftMenuTitle_IsMqttPlugin()
         {

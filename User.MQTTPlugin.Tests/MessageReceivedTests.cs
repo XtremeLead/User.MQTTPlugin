@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json.Linq;
@@ -33,20 +34,9 @@ namespace User.MQTTPlugin.Tests
             TestState.InvokeStatic(typeof(MQTTClient), "client_MqttMsgPublishReceived", null, args);
         }
 
-        /// <summary>
-        /// Delivers a message and returns the resulting MQTTMessage. Outside SimHub the
-        /// MqttMessage setter's AttachDelegate call throws after the value is stored (see
-        /// MessageReceived_OutsideSimHub_SetterThrowsAfterStoringValue), so that is ignored here.
-        /// </summary>
         private JObject Receive(string topic, byte[] payload)
         {
-            try
-            {
-                Raise(topic, payload);
-            }
-            catch (NullReferenceException)
-            {
-            }
+            Raise(topic, payload);
             return JObject.Parse(plugin.MqttMessage);
         }
 
@@ -79,13 +69,46 @@ namespace User.MQTTPlugin.Tests
             Assert.IsTrue(parsed >= before && parsed <= after, timestamp);
         }
 
-        // Current behaviour (B8): the setter calls AttachDelegate, which fails without a
-        // PluginManager. Inside SimHub it succeeds; the value is stored first either way.
         [TestMethod]
-        public void MessageReceived_OutsideSimHub_SetterThrowsAfterStoringValue()
+        public void MessageReceived_TimestampIso_IsCurrentTimeWithOffset()
         {
-            Assert.ThrowsException<NullReferenceException>(() => Raise("t", Encoding.UTF8.GetBytes("on")));
+            DateTimeOffset before = DateTimeOffset.Now.AddSeconds(-1);
+            Raise("t", Encoding.UTF8.GetBytes("on"));
+            DateTimeOffset after = DateTimeOffset.Now.AddSeconds(1);
+
+            string iso;
+            using (var reader = new Newtonsoft.Json.JsonTextReader(new System.IO.StringReader(plugin.MqttMessage)) { DateParseHandling = Newtonsoft.Json.DateParseHandling.None })
+            {
+                iso = (string)JObject.Load(reader)["timestampIso"];
+            }
+            DateTimeOffset parsed = DateTimeOffset.ParseExact(iso, "o", CultureInfo.InvariantCulture);
+            Assert.IsTrue(parsed >= before && parsed <= after, iso);
+            Assert.AreEqual(DateTimeOffset.Now.Offset, parsed.Offset, iso);
+        }
+
+        // B8: the setter no longer calls AttachDelegate (Init attaches the property once), so it
+        // works without a PluginManager and from any thread.
+        [TestMethod]
+        public void MessageReceived_OutsideSimHub_SetsMessageWithoutError()
+        {
+            Raise("t", Encoding.UTF8.GetBytes("on"));
+
             StringAssert.Contains(plugin.MqttMessage, "\"payload\":\"on\"");
+        }
+
+        // B10: received messages are logged at Debug only, including plain-text payloads.
+        [TestMethod]
+        [DataRow("{\"a\":1}", DisplayName = "JSON payload")]
+        [DataRow("on", DisplayName = "plain-text payload")]
+        public void MessageReceived_LogsOnlyAtDebug(string payload)
+        {
+            using (var log = new LogCapture())
+            {
+                Raise("home/sensor", Encoding.UTF8.GetBytes(payload));
+
+                Assert.IsTrue(log.Contains(log4net.Core.Level.Debug, "Received MQTT " + payload + " from topic home/sensor"));
+                CollectionAssert.AreEqual(new[] { log4net.Core.Level.Debug }, log.Events.Select(e => e.Level).Distinct().ToArray());
+            }
         }
 
         [TestMethod]

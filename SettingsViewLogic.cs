@@ -11,22 +11,18 @@ namespace User.MQTTPlugin
         internal const string ConnectionFailedMessage = "Connection failed. Please check your settings or broker availability.";
         internal const string ConnectionSuccessMessage = "Successfully connected. Happy simracing!";
         internal const string ConnectionTestSuccessMessage = "Successfully connected. Click Save to Save your settings and connect.";
+        internal const string SaveFailedMessage = "Could not save the settings. Please check the SimHub log.";
 
         /// <summary>
-        /// The status shown when the settings page opens, or null to keep the default text.
+        /// The status shown when the settings page opens.
         /// </summary>
-        internal static string InitialConnectionStatus(int configuredSettingsCount, bool clientExists, bool isConnected)
+        internal static string InitialConnectionStatus(bool hasSettings, bool clientExists, bool isConnected)
         {
-            string status = null;
-            if (configuredSettingsCount == 0)
+            if (!hasSettings && !clientExists)
             {
-                status = NoSettingsMessage;
+                return NoSettingsMessage;
             }
-            if (clientExists || configuredSettingsCount > 0)
-            {
-                status = isConnected ? ConnectionSuccessMessage : ConnectionFailedMessage;
-            }
-            return status;
+            return isConnected ? ConnectionSuccessMessage : ConnectionFailedMessage;
         }
 
         /// <summary>

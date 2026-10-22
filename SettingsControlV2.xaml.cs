@@ -30,14 +30,7 @@ namespace User.MQTTPlugin
             txtTopic.Text = settings["mqtttopic"];
             chkUseTls.IsChecked = SettingsRules.IsTlsEnabled(settings);
 
-            try
-            {
-                txtPassword.Password = Crypt.UnprotectString(settings["mqttpass"]);
-            }
-            catch (Exception)
-            {
-                txtPassword.Password = "";
-            }
+            txtPassword.Password = Crypt.UnprotectString(settings["mqttpass"]);
 
             LoadExistingActions();
 
@@ -50,12 +43,8 @@ namespace User.MQTTPlugin
             {
                 isConnected = false;
             }
-            string status = SettingsViewLogic.InitialConnectionStatus(
-                SettingsRules.CountConfiguredMqttSettings(settings), MQTTClient.CLIENT != null, isConnected);
-            if (status != null)
-            {
-                ConnectionStatus.Content = status;
-            }
+            ConnectionStatus.Content = SettingsViewLogic.InitialConnectionStatus(
+                SettingsRules.HasBrokerConfigured(settings), MQTTClient.CLIENT != null, isConnected);
         }
 
         private void LoadExistingActions()
@@ -72,7 +61,7 @@ namespace User.MQTTPlugin
             }
             catch (Exception ex)
             {
-                SimHub.Logging.Current.Info($"Could not parse MQTT Actions! {ex.Message}");
+                SimHub.Logging.Current.Error($"Could not parse MQTT Actions! {ex.Message}");
                 ActionsStatus.Content = "Could not load previously saved actions — check the log.";
             }
         }
@@ -117,7 +106,17 @@ namespace User.MQTTPlugin
         {
             btnSave.IsEnabled = false;
             ConnectionStatus.Content = "Connecting...";
-            await MQTTSettings.SaveSettingsAsync();
+            try
+            {
+                await MQTTSettings.SaveSettingsAsync();
+            }
+            catch (Exception)
+            {
+                // SaveSettingsAsync has logged the reason and discarded the staged values.
+                ConnectionStatus.Content = SettingsViewLogic.SaveFailedMessage;
+                btnSave.IsEnabled = true;
+                return;
+            }
             bool isConnected;
             try { isConnected = MQTTClient.CLIENT != null && MQTTClient.CLIENT.IsConnected; }
             catch (ObjectDisposedException) { isConnected = false; }

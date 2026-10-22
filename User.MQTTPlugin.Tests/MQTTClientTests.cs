@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Net.Sockets;
+using System.Linq;
 using System.Threading;
+using log4net.Core;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using uPLibrary.Networking.M2Mqtt;
 
@@ -42,69 +43,99 @@ namespace User.MQTTPlugin.Tests
 
         // --- ConnectAndSubscribe ---
 
+        // B7: without a broker there is nothing to connect to; that is normal, not a warning.
         [TestMethod]
-        public void ConnectAndSubscribe_DefaultSettings_StopsAtPortCheck()
+        public void ConnectAndSubscribe_NoBrokerConfigured_DoesNotConnectAndLogsInfo()
         {
-            MQTTClient.ConnectAndSubscribe();
+            TestState.Store["mqttport"] = "1883";
 
+            using (var log = new LogCapture())
+            {
+                MQTTClient.ConnectAndSubscribe();
+
+                Assert.IsTrue(log.Contains(Level.Info, "No MQTT broker configured"));
+                Assert.AreEqual(0, log.MessagesAt(Level.Warn).Count());
+            }
             Assert.IsNull(MQTTClient.CLIENT);
         }
 
         [TestMethod]
-        public void ConnectAndSubscribe_NonNumericPort_DoesNotConnect()
+        public void ConnectAndSubscribe_NonNumericPort_DoesNotConnectAndWarns()
         {
             TestState.Store["mqttserver"] = UnresolvableBroker;
             TestState.Store["mqttport"] = "abc";
 
-            MQTTClient.ConnectAndSubscribe();
+            using (var log = new LogCapture())
+            {
+                MQTTClient.ConnectAndSubscribe();
 
+                Assert.IsTrue(log.Contains(Level.Warn, "Invalid or missing MQTT port 'abc'"));
+            }
             Assert.IsNull(MQTTClient.CLIENT);
         }
 
-        // Current behaviour (B1): the MqttClient constructor resolves the host outside the try,
-        // so the exception escapes ConnectAndSubscribe (and Init, before StartWatchdog).
-        // The empty default password doesn't stop it: that failure is caught and logged.
+        // B1: a failing DNS lookup is a failed connect, not an exception that stops the caller
+        // (Init, the Save button or the watchdog).
         [TestMethod]
-        public void ConnectAndSubscribe_UnresolvableBroker_ThrowsSocketException()
+        public void ConnectAndSubscribe_UnresolvableBroker_FailsWithoutThrowing()
         {
             TestState.Store["mqttserver"] = UnresolvableBroker;
             TestState.Store["mqttport"] = "1883";
+            TestState.Store["lastConnectionSuccessful"] = true;
+            MQTTClient.IsConnected = true;
 
-            Assert.ThrowsException<SocketException>(() => MQTTClient.ConnectAndSubscribe());
+            using (var log = new LogCapture())
+            {
+                MQTTClient.ConnectAndSubscribe();
+
+                Assert.IsTrue(log.Contains(Level.Warn, "Failed to connect to MQTT Broker " + UnresolvableBroker));
+            }
             Assert.IsNull(MQTTClient.CLIENT);
+            Assert.IsFalse(MQTTClient.IsConnected);
             Assert.AreEqual(false, TestState.Store["lastConnectionSuccessful"]);
         }
 
-        // Current behaviour (B1): the Test button gets a faulted task for the same reason.
+        // B1: the Test button gets "failed" instead of a faulted task.
         [TestMethod]
-        public void TestConnectionAsync_UnresolvableBroker_FaultsWithSocketException()
+        public void TestConnectionAsync_UnresolvableBroker_ReturnsFalse()
         {
-            var task = MQTTClient.TestConnectionAsync(UnresolvableBroker, 1883, "", "");
+            using (var log = new LogCapture())
+            {
+                bool result = MQTTClient.TestConnectionAsync(UnresolvableBroker, 1883, "", "").Result;
 
-            var exception = Assert.ThrowsException<AggregateException>(() => task.Wait());
-            Assert.IsInstanceOfType(exception.InnerException, typeof(SocketException));
+                Assert.IsFalse(result);
+                Assert.IsTrue(log.Contains(Level.Warn, "Connection test to connect to MQTT Broker " + UnresolvableBroker + " failed"));
+            }
+            Assert.AreEqual(false, TestState.Store["lastConnectionSuccessful"]);
         }
 
         // --- Publish ---
 
-        // Current behaviour (B10): without a connection the message is dropped silently.
+        // B10: a message that can't be sent is reported instead of dropped silently.
         [TestMethod]
-        public void Publish_NoClient_DropsMessageWithoutError()
+        public void Publish_NoClient_WarnsThatMessageWasNotPublished()
         {
-            MQTTClient.Publish("t", "m");
+            using (var log = new LogCapture())
+            {
+                MQTTClient.Publish("home/light", "on");
 
-            Assert.IsNull(MQTTClient.CLIENT);
+                Assert.IsTrue(log.Contains(Level.Warn, "message to topic home/light was not published"));
+            }
         }
 
         [TestMethod]
-        public void Publish_ClientNotConnected_DropsMessageWithoutError()
+        public void Publish_ClientNotConnected_WarnsThatMessageWasNotPublished()
         {
             // An IP address skips DNS, and the constructor doesn't connect.
             var client = new MqttClient("127.0.0.1");
             MQTTClient.CLIENT = client;
 
-            MQTTClient.Publish("t", "m");
+            using (var log = new LogCapture())
+            {
+                MQTTClient.Publish("home/light", "on");
 
+                Assert.IsTrue(log.Contains(Level.Warn, "message to topic home/light was not published"));
+            }
             Assert.IsFalse(client.IsConnected);
         }
 
@@ -210,6 +241,41 @@ namespace User.MQTTPlugin.Tests
 
             CollectionAssert.AreEqual(new[] { 2, 5, 10, 30, 60, 60, 60 }, waits);
             Assert.AreEqual(7, ReconnectAttempt);
+        }
+
+        // B1: an unreachable broker makes the reconnect fail quietly, so the next tick retries.
+        [TestMethod]
+        public void WatchdogTick_UnresolvableBroker_FailsAndAllowsNextAttempt()
+        {
+            TestState.Store["mqttserver"] = UnresolvableBroker;
+            TestState.Store["mqttport"] = "1883";
+
+            using (var log = new LogCapture())
+            {
+                WatchdogTick();
+                WaitForReconnectToFinish();
+                WatchdogTick();
+                WaitForReconnectToFinish();
+
+                Assert.AreEqual(0, log.MessagesAt(Level.Error).Count());
+            }
+            Assert.AreEqual(2, ReconnectAttempt);
+            Assert.IsNull(MQTTClient.CLIENT);
+        }
+
+        [TestMethod]
+        public void WatchdogTick_ReconnectThrows_LogsErrorAndClearsFlag()
+        {
+            TestState.Store["mqttserver"] = UnresolvableBroker;
+            MQTTClient.SleepSeconds = seconds => { throw new InvalidOperationException("boom"); };
+
+            using (var log = new LogCapture())
+            {
+                WatchdogTick();
+                WaitForReconnectToFinish();
+
+                Assert.IsTrue(log.Contains(Level.Error, "MQTT reconnect failed: boom"));
+            }
         }
     }
 }

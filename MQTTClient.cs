@@ -46,12 +46,19 @@ namespace User.MQTTPlugin
                     CLIENT.Disconnect();
                 }
 
-                MqttClient client = new MqttClient(broker,
-                    port,
-                    useTls,
-                    useTls ? MqttSslProtocols.TLSv1_2 : MqttSslProtocols.None,
-                    null,
-                    null);
+                MqttClient client;
+                try
+                {
+                    // The constructor resolves the host name, so it fails when DNS does.
+                    client = CreateClient(broker, port, useTls);
+                }
+                catch (Exception e)
+                {
+                    IsConnected = false;
+                    MQTTSettings.Store["lastConnectionSuccessful"] = false;
+                    SimHub.Logging.Current.Warn($"Failed to connect to MQTT Broker {broker}. {e.Message}");
+                    return;
+                }
 
                 client.MqttMsgPublishReceived += client_MqttMsgPublishReceived;
                 client.ConnectionClosed += client_ConnectionClosed;
@@ -63,7 +70,7 @@ namespace User.MQTTPlugin
                 catch (Exception e)
                 {
                     MQTTSettings.Store["lastConnectionSuccessful"] = false;
-                    SimHub.Logging.Current.Info($"Failed to connect to MQTT Broker {broker}. {e.InnerException?.Message ?? e.Message}");
+                    SimHub.Logging.Current.Warn($"Failed to connect to MQTT Broker {broker}. {e.InnerException?.Message ?? e.Message}");
                 }
 
                 IsConnected = client.IsConnected;
@@ -75,17 +82,27 @@ namespace User.MQTTPlugin
                 }
                 else
                 {
-                    SimHub.Logging.Current.Info($"Failed to connect to MQTT Broker {broker}");
+                    SimHub.Logging.Current.Warn($"Failed to connect to MQTT Broker {broker}");
                 }
                 CLIENT = client;
             }
 
         }
 
+        private static MqttClient CreateClient(string broker, int port, bool useTls)
+        {
+            return new MqttClient(broker,
+                port,
+                useTls,
+                useTls ? MqttSslProtocols.TLSv1_2 : MqttSslProtocols.None,
+                null,
+                null);
+        }
+
         private static void client_ConnectionClosed(object sender, EventArgs e)
         {
             IsConnected = false;
-            SimHub.Logging.Current.Info("MQTT connection closed unexpectedly.");
+            SimHub.Logging.Current.Warn("MQTT connection closed unexpectedly.");
         }
 
         public static Task<bool> TestConnectionAsync(string broker, int port, string username, string password, bool useTls = false)
@@ -96,21 +113,15 @@ namespace User.MQTTPlugin
             {
                 string clientId = Guid.NewGuid().ToString();
 
-                MqttClient client = new MqttClient(
-                    broker,
-                    port,
-                    useTls,
-                    useTls ? MqttSslProtocols.TLSv1_2 : MqttSslProtocols.None,
-                    null,
-                    null);
-
+                MqttClient client;
                 try
                 {
+                    client = CreateClient(broker, port, useTls);
                     client.Connect(clientId, username, password);
                 }
                 catch (Exception e)
                 {
-                    SimHub.Logging.Current.Info($"Connection test to connect to MQTT Broker {broker} failed. {e.InnerException?.Message ?? e.Message}");
+                    SimHub.Logging.Current.Warn($"Connection test to connect to MQTT Broker {broker} failed. {e.InnerException?.Message ?? e.Message}");
                     MQTTSettings.Store["lastConnectionSuccessful"] = false;
                     return false;
                 }
@@ -125,7 +136,7 @@ namespace User.MQTTPlugin
                 }
                 else
                 {
-                    SimHub.Logging.Current.Info($"Connection test to connect to MQTT Broker {broker} failed.");
+                    SimHub.Logging.Current.Warn($"Connection test to connect to MQTT Broker {broker} failed.");
                     client.Disconnect();
                     return false;
                 }
@@ -142,21 +153,17 @@ namespace User.MQTTPlugin
         {
             string payload = Encoding.UTF8.GetString(e.Message);
             object obj = MessageFormatter.ParsePayload(payload, out bool isJson);
-            if (!isJson)
-            {
-                SimHub.Logging.Current.Info($"MQTT payload from topic {e.Topic} is not valid JSON; treating as plain string.");
-            }
-            string LogMessage = $"Received MQTT {payload} from topic {e.Topic}";
-            SimHub.Logging.Current.Info(LogMessage);
+            string LogMessage = $"Received MQTT {payload} from topic {e.Topic}" + (isJson ? "" : " (not valid JSON; passed on as a string)");
+            SimHub.Logging.Current.Debug(LogMessage);
 
-            string sMessage = MessageFormatter.Format(e.Topic, obj, DateTime.Now);
+            string sMessage = MessageFormatter.Format(e.Topic, obj, DateTimeOffset.Now);
             if (MQTTPlugin.Instance != null)
             {
                 MQTTPlugin.Instance.MqttMessage = sMessage;
             }
             else
             {
-                SimHub.Logging.Current.Info("Received MQTT message but no active MQTTPlugin instance to update.");
+                SimHub.Logging.Current.Debug("Received MQTT message but no active MQTTPlugin instance to update.");
             }
         }
 
@@ -166,8 +173,12 @@ namespace User.MQTTPlugin
             {
                 if (CLIENT != null && CLIENT.IsConnected)
                 {
-                    SimHub.Logging.Current.Info($"Publishing MQTT message '{message}' to topic {topic}");
+                    SimHub.Logging.Current.Debug($"Publishing MQTT message '{message}' to topic {topic}");
                     CLIENT.Publish(topic, Encoding.UTF8.GetBytes(message));
+                }
+                else
+                {
+                    SimHub.Logging.Current.Warn($"MQTT is not connected; message to topic {topic} was not published.");
                 }
             }
         }
@@ -175,32 +186,22 @@ namespace User.MQTTPlugin
         public static void ConnectAndSubscribe()
         {
             IDictionary<string, string> settings = MQTTSettings.LoadSettings();
+            if (!SettingsRules.HasBrokerConfigured(settings))
+            {
+                SimHub.Logging.Current.Info("No MQTT broker configured; not connecting.");
+                return;
+            }
             string broker = settings["mqttserver"];
             if (!SettingsRules.TryParsePort(settings["mqttport"], out int port))
             {
-                SimHub.Logging.Current.Info($"Invalid or missing MQTT port '{settings["mqttport"]}'. Aborting connect.");
+                SimHub.Logging.Current.Warn($"Invalid or missing MQTT port '{settings["mqttport"]}'. Aborting connect.");
                 return;
             }
             string topic = settings["mqtttopic"];
             string username = settings["mqttuser"];
-            string password = "";
+            string password = Crypt.UnprotectString(settings["mqttpass"]);
             bool useTls = SettingsRules.IsTlsEnabled(settings);
-            try
-            {
-                password = Crypt.UnprotectString(settings["mqttpass"]);
-            }
-            catch (Exception e)
-            {
-                SimHub.Logging.Current.Info($"Failed to decrypt MQTT password, proceeding with empty password. {e.Message}");
-            }
             string clientId = Guid.NewGuid().ToString();
-
-            int configuredSettingsCount = SettingsRules.CountConfiguredMqttSettings(settings);
-            if (configuredSettingsCount == 0)
-            {
-                SimHub.Logging.Current.Info($"Found {configuredSettingsCount} MQTT settings!");
-                return;
-            }
 
             SimHub.Logging.Current.Info($"Connecting MQTT on {broker}.");
             if (CLIENT == null || !CLIENT.IsConnected)
@@ -266,9 +267,7 @@ namespace User.MQTTPlugin
             }
 
             // Only attempt reconnect if we have settings worth reconnecting with.
-            IDictionary<string, string> settings = MQTTSettings.LoadSettings();
-            bool hasSettings = settings.TryGetValue("mqttserver", out string server) && !string.IsNullOrEmpty(server);
-            if (!hasSettings)
+            if (!SettingsRules.HasBrokerConfigured(MQTTSettings.LoadSettings()))
             {
                 return;
             }
@@ -287,6 +286,10 @@ namespace User.MQTTPlugin
                 {
                     SleepSeconds(delaySeconds);
                     ConnectAndSubscribe();
+                }
+                catch (Exception ex)
+                {
+                    SimHub.Logging.Current.Error($"MQTT reconnect failed: {ex.Message}");
                 }
                 finally
                 {

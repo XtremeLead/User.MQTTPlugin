@@ -8,42 +8,35 @@ namespace User.MQTTPlugin.Tests
     {
         // --- InitialConnectionStatus ---
 
+        // B7: a fresh install has no broker and no client, so it asks for settings.
         [TestMethod]
         public void InitialConnectionStatus_NoSettingsNoClient_AsksForSettings()
         {
-            Assert.AreEqual(SettingsViewLogic.NoSettingsMessage, SettingsViewLogic.InitialConnectionStatus(0, false, false));
+            Assert.AreEqual(SettingsViewLogic.NoSettingsMessage, SettingsViewLogic.InitialConnectionStatus(false, false, false));
         }
 
         [TestMethod]
         public void InitialConnectionStatus_NoSettingsButClientConnected_ShowsSuccess()
         {
-            Assert.AreEqual(SettingsViewLogic.ConnectionSuccessMessage, SettingsViewLogic.InitialConnectionStatus(0, true, true));
+            Assert.AreEqual(SettingsViewLogic.ConnectionSuccessMessage, SettingsViewLogic.InitialConnectionStatus(false, true, true));
         }
 
         [TestMethod]
         public void InitialConnectionStatus_NoSettingsButClientDisconnected_ShowsFailure()
         {
-            Assert.AreEqual(SettingsViewLogic.ConnectionFailedMessage, SettingsViewLogic.InitialConnectionStatus(0, true, false));
+            Assert.AreEqual(SettingsViewLogic.ConnectionFailedMessage, SettingsViewLogic.InitialConnectionStatus(false, true, false));
         }
 
         [TestMethod]
         public void InitialConnectionStatus_SettingsAndConnected_ShowsSuccess()
         {
-            Assert.AreEqual(SettingsViewLogic.ConnectionSuccessMessage, SettingsViewLogic.InitialConnectionStatus(3, true, true));
+            Assert.AreEqual(SettingsViewLogic.ConnectionSuccessMessage, SettingsViewLogic.InitialConnectionStatus(true, true, true));
         }
 
         [TestMethod]
         public void InitialConnectionStatus_SettingsWithoutClient_ShowsFailure()
         {
-            Assert.AreEqual(SettingsViewLogic.ConnectionFailedMessage, SettingsViewLogic.InitialConnectionStatus(3, false, false));
-        }
-
-        // Current behaviour (B7): a fresh install counts one setting (mqtttls), so it shows
-        // "Connection failed" instead of asking for settings.
-        [TestMethod]
-        public void InitialConnectionStatus_FreshInstall_ShowsFailureInsteadOfAskingForSettings()
-        {
-            Assert.AreEqual(SettingsViewLogic.ConnectionFailedMessage, SettingsViewLogic.InitialConnectionStatus(1, false, false));
+            Assert.AreEqual(SettingsViewLogic.ConnectionFailedMessage, SettingsViewLogic.InitialConnectionStatus(true, false, false));
         }
 
         [TestMethod]
@@ -53,6 +46,7 @@ namespace User.MQTTPlugin.Tests
             Assert.AreEqual("Connection failed. Please check your settings or broker availability.", SettingsViewLogic.ConnectionFailedMessage);
             Assert.AreEqual("Successfully connected. Happy simracing!", SettingsViewLogic.ConnectionSuccessMessage);
             Assert.AreEqual("Successfully connected. Click Save to Save your settings and connect.", SettingsViewLogic.ConnectionTestSuccessMessage);
+            Assert.AreEqual("Could not save the settings. Please check the SimHub log.", SettingsViewLogic.SaveFailedMessage);
         }
 
         // --- PortAfterTlsChange ---

@@ -16,40 +16,40 @@ namespace User.MQTTPlugin.Tests
             return settings;
         }
 
-        // Current behaviour (B7): on a fresh install mqtttls is "False", which counts as a
-        // configured setting, so the count is never 0.
+        // B7: a fresh install has mqtttls "False" and lastConnectionSuccessful "False", but no
+        // broker, so it has no settings.
         [TestMethod]
-        public void CountConfiguredMqttSettings_FreshInstall_CountsTlsDefault()
+        public void HasBrokerConfigured_FreshInstall_ReturnsFalse()
         {
             var fresh = new FakeSettingsStore();
             var settings = new Dictionary<string, string>();
             foreach (string name in fresh.Names) settings[name] = fresh[name].ToString();
 
-            Assert.AreEqual(1, SettingsRules.CountConfiguredMqttSettings(settings));
+            Assert.IsFalse(SettingsRules.HasBrokerConfigured(settings));
         }
 
         [TestMethod]
-        public void CountConfiguredMqttSettings_CountsOnlyNonEmptyMqttKeys()
+        public void HasBrokerConfigured_BrokerSet_ReturnsTrue()
+        {
+            Assert.IsTrue(SettingsRules.HasBrokerConfigured(Settings("mqttserver", "broker.example")));
+        }
+
+        [TestMethod]
+        public void HasBrokerConfigured_OtherSettingsWithoutBroker_ReturnsFalse()
         {
             var settings = Settings(
-                "mqttserver", "broker.example",
+                "mqttserver", "",
                 "mqttport", "1883",
-                "mqttuser", "",
-                "lastConnectionSuccessful", "True");
+                "mqtttopic", "home/#",
+                "mqtttls", "True");
 
-            Assert.AreEqual(2, SettingsRules.CountConfiguredMqttSettings(settings));
+            Assert.IsFalse(SettingsRules.HasBrokerConfigured(settings));
         }
 
         [TestMethod]
-        public void CountConfiguredMqttSettings_KeyMatchIsCaseSensitive()
+        public void HasBrokerConfigured_MissingKey_ReturnsFalse()
         {
-            Assert.AreEqual(0, SettingsRules.CountConfiguredMqttSettings(Settings("MqttServer", "broker.example")));
-        }
-
-        [TestMethod]
-        public void CountConfiguredMqttSettings_Empty_ReturnsZero()
-        {
-            Assert.AreEqual(0, SettingsRules.CountConfiguredMqttSettings(Settings()));
+            Assert.IsFalse(SettingsRules.HasBrokerConfigured(Settings()));
         }
 
         [TestMethod]
