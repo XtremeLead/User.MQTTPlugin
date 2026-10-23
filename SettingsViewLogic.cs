@@ -16,9 +16,9 @@ namespace User.MQTTPlugin
         /// <summary>
         /// The status shown when the settings page opens.
         /// </summary>
-        internal static string InitialConnectionStatus(bool hasSettings, bool clientExists, bool isConnected)
+        internal static string InitialConnectionStatus(bool hasSettings, bool isConnected)
         {
-            if (!hasSettings && !clientExists)
+            if (!hasSettings && !isConnected)
             {
                 return NoSettingsMessage;
             }

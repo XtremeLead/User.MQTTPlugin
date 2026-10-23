@@ -72,10 +72,13 @@
     <Compile Include="ActionsSerializer.cs" />
     <Compile Include="Crypt.cs" />
     <Compile Include="MessageFormatter.cs" />
-    <Compile Include="MQTTClient.cs" />
+    <Compile Include="ConnectionSettings.cs" />
+    <Compile Include="MqttClientAdapter.cs" />
+    <Compile Include="MqttConnectionManager.cs" />
     <Compile Include="MQTTPlugin.cs" />
     <Compile Include="MQTTPluginSettings.cs" />
     <Compile Include="MQTTSettings.cs" />
+    <Compile Include="PluginServices.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="SettingsRules.cs" />
     <Compile Include="SettingsStore.cs" />

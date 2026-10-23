@@ -8,35 +8,29 @@ namespace User.MQTTPlugin.Tests
     {
         // --- InitialConnectionStatus ---
 
-        // B7: a fresh install has no broker and no client, so it asks for settings.
+        // B7: a fresh install has no broker and no connection, so it asks for settings.
         [TestMethod]
-        public void InitialConnectionStatus_NoSettingsNoClient_AsksForSettings()
+        public void InitialConnectionStatus_NoSettingsNotConnected_AsksForSettings()
         {
-            Assert.AreEqual(SettingsViewLogic.NoSettingsMessage, SettingsViewLogic.InitialConnectionStatus(false, false, false));
+            Assert.AreEqual(SettingsViewLogic.NoSettingsMessage, SettingsViewLogic.InitialConnectionStatus(false, false));
         }
 
         [TestMethod]
-        public void InitialConnectionStatus_NoSettingsButClientConnected_ShowsSuccess()
+        public void InitialConnectionStatus_NoSettingsButConnected_ShowsSuccess()
         {
-            Assert.AreEqual(SettingsViewLogic.ConnectionSuccessMessage, SettingsViewLogic.InitialConnectionStatus(false, true, true));
-        }
-
-        [TestMethod]
-        public void InitialConnectionStatus_NoSettingsButClientDisconnected_ShowsFailure()
-        {
-            Assert.AreEqual(SettingsViewLogic.ConnectionFailedMessage, SettingsViewLogic.InitialConnectionStatus(false, true, false));
+            Assert.AreEqual(SettingsViewLogic.ConnectionSuccessMessage, SettingsViewLogic.InitialConnectionStatus(false, true));
         }
 
         [TestMethod]
         public void InitialConnectionStatus_SettingsAndConnected_ShowsSuccess()
         {
-            Assert.AreEqual(SettingsViewLogic.ConnectionSuccessMessage, SettingsViewLogic.InitialConnectionStatus(true, true, true));
+            Assert.AreEqual(SettingsViewLogic.ConnectionSuccessMessage, SettingsViewLogic.InitialConnectionStatus(true, true));
         }
 
         [TestMethod]
-        public void InitialConnectionStatus_SettingsWithoutClient_ShowsFailure()
+        public void InitialConnectionStatus_SettingsNotConnected_ShowsFailure()
         {
-            Assert.AreEqual(SettingsViewLogic.ConnectionFailedMessage, SettingsViewLogic.InitialConnectionStatus(true, false, false));
+            Assert.AreEqual(SettingsViewLogic.ConnectionFailedMessage, SettingsViewLogic.InitialConnectionStatus(true, false));
         }
 
         [TestMethod]

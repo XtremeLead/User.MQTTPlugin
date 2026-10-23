@@ -22,6 +22,17 @@ namespace User.MQTTPlugin.Tests
             Assert.AreEqual("{\"payload\":\"on\"}", plugin.MqttMessage);
         }
 
+        // A4: the plugin receives messages through MqttConnectionManager.MessageReceived.
+        [TestMethod]
+        public void OnMqttMessage_SetsMqttMessage()
+        {
+            var plugin = new MQTTPlugin();
+
+            plugin.OnMqttMessage("{\"payload\":\"on\"}");
+
+            Assert.AreEqual("{\"payload\":\"on\"}", plugin.MqttMessage);
+        }
+
         [TestMethod]
         public void LeftMenuTitle_IsMqttPlugin()
         {

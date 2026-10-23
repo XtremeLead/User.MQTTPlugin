@@ -157,5 +157,9 @@ Elke fase levert een werkende, bouwbare plugin op met MSTest-tests, zoals [CLAUD
   - **Besluit (2026-10-21):** ja. Er komt een getypeerd model in de opslag van `ReadCommonSettings`. De eenmalige migratie leest de `user.config` van de huidige SimHub-versie (via `Properties.Settings`), en alleen als de nieuwe opslag nog leeg is. Oude bedrijfsmappen worden niet doorzocht.
 - **D2. Timestamp:** nu is dat een `nl-NL`-string. ISO 8601 is robuuster, maar breekt dashboards die de huidige tekst parsen.
   - **Besluit (2026-10-21):** `timestamp` blijft exact zoals nu (`nl-NL`). Er komt een extra veld `timestampIso` bij in ISO 8601 met offset (`DateTimeOffset.ToString("o")`, bijvoorbeeld `2026-10-21T14:03:12.3450000+02:00`).
+- **D4. Eén gedeelde verbindingsbeheerder of één per plugininstantie?**
+  - **Besluit (2026-10-22):** één gedeelde (`MqttConnectionManager.Shared`), op advies. SimHub bouwt de plugin bij elke gamewissel opnieuw op, en het instellingenscherm kan naar een oude instantie wijzen (B4). Met één gedeelde beheerder werken Save en Test altijd op de echte verbinding. `Init` start de beheerder en `End` stopt hem.
+- **D5. Moet `Init` wachten op de eerste verbinding?**
+  - **Besluit (2026-10-22):** nee. `Start()` maakt de eerste verbinding op de achtergrond, zodat een onbereikbare broker het opstarten van SimHub niet ophoudt.
 - **D3. Oude `SettingsControl` verwijderen?**
   - **Besluit (2026-10-21):** ja, in F5. Het scherm wordt nooit getoond, omdat `GetWPFSettingsControl` via een constante altijd V2 kiest. Bij laten staan zou het in F2–F4 telkens mee aangepast moeten worden. `DeserializeDict` verhuist in F3 naar de serializer-helper. Terughalen kan via git.

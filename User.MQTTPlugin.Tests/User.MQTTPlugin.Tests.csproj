@@ -69,12 +69,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActionsSerializationTests.cs" />
+    <Compile Include="ConnectionFakes.cs" />
+    <Compile Include="ConnectionSettingsTests.cs" />
     <Compile Include="CryptTests.cs" />
     <Compile Include="FakeSettingsStore.cs" />
     <Compile Include="LogCapture.cs" />
+    <Compile Include="M2MqttClientTests.cs" />
     <Compile Include="MessageFormatterTests.cs" />
-    <Compile Include="MessageReceivedTests.cs" />
-    <Compile Include="MQTTClientTests.cs" />
+    <Compile Include="MqttConnectionManagerTests.cs" />
     <Compile Include="MQTTPluginTests.cs" />
     <Compile Include="MQTTSettingsTests.cs" />
     <Compile Include="PropertiesSettingsStoreTests.cs" />

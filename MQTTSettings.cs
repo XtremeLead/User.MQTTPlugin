@@ -11,7 +11,7 @@ namespace User.MQTTPlugin
 
         // Where the settings live, and what happens after saving. Tests replace both.
         internal static ISettingsStore Store = new PropertiesSettingsStore();
-        internal static Func<Task> Reconnect = MQTTClient.ConnectAndSubscribeAsync;
+        internal static Func<Task> Reconnect = MqttConnectionManager.ReconnectSharedAsync;
 
         public static IDictionary<string, string> LoadSettings()
         {

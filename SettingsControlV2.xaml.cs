@@ -34,17 +34,8 @@ namespace User.MQTTPlugin
 
             LoadExistingActions();
 
-            bool isConnected;
-            try
-            {
-                isConnected = MQTTClient.CLIENT != null && MQTTClient.CLIENT.IsConnected;
-            }
-            catch (ObjectDisposedException)
-            {
-                isConnected = false;
-            }
             ConnectionStatus.Content = SettingsViewLogic.InitialConnectionStatus(
-                SettingsRules.HasBrokerConfigured(settings), MQTTClient.CLIENT != null, isConnected);
+                SettingsRules.HasBrokerConfigured(settings), MqttConnectionManager.Shared.IsConnected);
         }
 
         private void LoadExistingActions()
@@ -117,10 +108,7 @@ namespace User.MQTTPlugin
                 btnSave.IsEnabled = true;
                 return;
             }
-            bool isConnected;
-            try { isConnected = MQTTClient.CLIENT != null && MQTTClient.CLIENT.IsConnected; }
-            catch (ObjectDisposedException) { isConnected = false; }
-            ConnectionStatus.Content = isConnected ? SettingsViewLogic.ConnectionSuccessMessage : SettingsViewLogic.ConnectionFailedMessage;
+            ConnectionStatus.Content = MqttConnectionManager.Shared.IsConnected ? SettingsViewLogic.ConnectionSuccessMessage : SettingsViewLogic.ConnectionFailedMessage;
             btnSave.IsEnabled = true;
         }
 
@@ -135,10 +123,9 @@ namespace User.MQTTPlugin
             ConnectionStatus.Content = "Testing connection...";
             try
             {
-                bool useTls = chkUseTls.IsChecked == true;
-                bool connectionSuccessful = await MQTTClient.TestConnectionAsync(txtBroker.Text, port, txtUser.Text, txtPassword.Password, useTls);
+                var testSettings = new ConnectionSettings(txtBroker.Text, port, txtUser.Text, txtPassword.Password, txtTopic.Text, chkUseTls.IsChecked == true);
+                bool connectionSuccessful = await MqttConnectionManager.Shared.TestAsync(testSettings);
                 ConnectionStatus.Content = connectionSuccessful ? SettingsViewLogic.ConnectionTestSuccessMessage : SettingsViewLogic.ConnectionFailedMessage;
-                MQTTSettings.Store["lastConnectionSuccessful"] = connectionSuccessful;
                 btnSave.IsEnabled = connectionSuccessful;
             }
             catch (Exception)

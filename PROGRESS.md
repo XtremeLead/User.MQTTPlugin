@@ -11,7 +11,7 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | F0. Testproject | ✅ | Klassiek net48-project met MSTest 3.1.1 en `vstest.console` uit het pakket `Microsoft.TestPlatform`; commando's in CLAUDE.md |
 | F0b. Seams zonder gedragswijziging | ✅ | Toegevoegd op verzoek van de gebruiker, zie PLAN.md. 139 tests groen en handmatig gecontroleerd in SimHub |
 | F1. Snelle, veilige bugfixes | ✅ | 158 tests groen; B1, B2 en acties handmatig bevestigd in SimHub |
-| F2. Verbindingsbeheerder | ⬜ | |
+| F2. Verbindingsbeheerder | ✅ | 186 tests groen; handmatig bevestigd in SimHub (opstarten, Test, Save met nieuw topic, gamewissel, acties, afsluiten) |
 | F3. Acties naar de plugin | ⬜ | |
 | F4. Instellingenmodel en opslag | ⬜ | |
 | F5. Opruimen en leesbaarheid | ⬜ | |
@@ -23,22 +23,22 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 |---|---|---|---|
 | B1 | DNS-fout bij opstarten zet de plugin uit | F1 | ✅ (ook handmatig bevestigd in SimHub) |
 | B2 | TLS-vinkje blokkeert het opslaan | F1 | ✅ (ook handmatig bevestigd in SimHub) |
-| B3 | Test verbreekt de live verbinding, Save past niet toe | F2 | ⬜ |
+| B3 | Test verbreekt de live verbinding, Save past niet toe | F2 | ✅ (ook handmatig bevestigd in SimHub) |
 | B4 | Acties pas actief na openen van de instellingen | F3 | ⬜ |
 | B5 | Instellingen weg na SimHub-update | F4 | ⬜ |
-| B6 | Race conditions rond de verbinding | F2 | ⬜ |
+| B6 | Race conditions rond de verbinding | F2 | ✅ |
 | B7 | "Please provide MQTT settings" wordt nooit getoond | F1 | ✅ |
 | B8 | `AttachDelegate` bij elk bericht | F1 | ✅ |
 | B9 | Foutpaden rond het wachtwoord | F1 | ✅ |
 | B10 | Ruis in het log, stille publish | F1 | ✅ |
 | B11 | JSON-payloads worden herschreven (tijdzone, decimalen) | F1 | ✅ |
-| A1 | Verbindingsbeheerder in plaats van statische toestand | F2 | ⬜ |
+| A1 | Verbindingsbeheerder in plaats van statische toestand | F2 | ✅ |
 | A2 | Eén getypeerd instellingenmodel | F4 | ⬜ |
 | A3 | Acties bij de plugin | F3 | ⬜ |
-| A4 | Berichtverwerking los van bijwerkingen | F1/F2 | 🔄 formatter en `timestampIso` klaar; event i.p.v. `Instance` in F2 |
+| A4 | Berichtverwerking los van bijwerkingen | F1/F2 | ✅ |
 | A5 | Oude code en template-resten weg | F5 | ⬜ |
 | L1–L6 | Leesbaarheid | F1/F4/F5 | 🔄 L6 ✅ (F1, behalve het oude `SettingsControl`, dat in F5 verdwijnt) |
-| T1–T5 | Testbaarheid | F0b/F2 | 🔄 T1 en T3 ✅ (F0b), T5 deels (tijdstip als parameter, `SleepSeconds`), T2 en T4 in F2 |
+| T1–T5 | Testbaarheid | F0b/F2 | ✅ T1 en T3 (F0b), T2, T4 en T5 (F2) |
 
 ## Beslissingen
 
@@ -46,9 +46,35 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 |---|---|---|---|
 | D1 | Overstappen naar SimHub-opslag met migratie? | Ja: getypeerd model in `ReadCommonSettings`, eenmalige migratie uit de huidige `user.config` als de nieuwe opslag leeg is | 2026-10-21 |
 | D2 | Timestamp: extra ISO 8601-veld? | Ja: `timestamp` blijft `nl-NL`, extra veld `timestampIso` (`DateTimeOffset.ToString("o")`) | 2026-10-21 |
+| D4 | Gedeelde verbindingsbeheerder of één per plugininstantie? | Gedeeld (`MqttConnectionManager.Shared`), op advies | 2026-10-22 |
+| D5 | Moet `Init` wachten op de eerste verbinding? | Nee, de eerste verbinding gebeurt op de achtergrond | 2026-10-22 |
 | D3 | Oude `SettingsControl` verwijderen? | Ja, in F5; `DeserializeDict` gaat in F3 naar de serializer-helper | 2026-10-21 |
 
 ## Log
+
+- **2026-10-23:** F2 afgerond. De gebruiker heeft Save met een nieuw topic bevestigd: het log toont direct "Connecting", "Connected" en "Subscribed to MQTT topic …" met het nieuwe topic.
+
+- **2026-10-23:** F2 handmatig gecontroleerd in SimHub.
+  - **In orde:** opstarten, Test met een onbereikbare broker (de live verbinding blijft staan), acties en afsluiten (geen Warn "closed unexpectedly").
+  - **Gamewissel:** MQTT stopt en start weer automatisch. Daarmee is bevestigd dat SimHub `End` van de oude instantie aanroept vóór `Init` van de nieuwe (relevant voor B4).
+  - **Save met een nieuw topic:** lastig te controleren. Daarom is een Info-logregel "Subscribed to MQTT topic …" toegevoegd, met tests; er zijn nog steeds 186 tests en drie runs na elkaar slaagden allemaal. Deze controle staat nog open.
+
+- **2026-10-22:** F2 gebouwd. Er zijn nu 186 tests, en vijf runs na elkaar slaagden allemaal.
+  - **De beheerder:** `MQTTClient.cs` is vervangen door `MqttConnectionManager`, met één gedeelde instantie (D4). `Start` en `Stop` krijgen de plugin als eigenaar mee, zodat de `End` van een oude instantie de verbinding van een nieuwe niet stopt. De eerste verbinding gebeurt op de achtergrond (D5).
+  - **Nieuwe onderdelen:**
+    - `IMqttClient`/`IMqttClientFactory` met een M2Mqtt-adapter (T2);
+    - `IPluginLog` (T4) en `IClock` (T5);
+    - een timer en een wachtfunctie die via de constructor binnenkomen (T5);
+    - `ConnectionSettings` (de controles op broker en poort, en het ontsleutelde wachtwoord).
+  - **B3:** Test gebruikt altijd een aparte client. Save (`ReconnectAsync`) verbreekt altijd en verbindt opnieuw met de opgeslagen instellingen, dus alleen het nieuwe topic blijft geabonneerd.
+  - **B6:** er loopt maar één verbinding tegelijk (`connectGate`), en het blokkerende `Connect` draait buiten de lock. `Stop` annuleert de backoff-wachttijd, en een verbinding die na `Stop` klaar komt, wordt weggegooid. Dat laatste wordt ook getest voor de gamewissel, waar `Stop` van de oude en `Start` van de nieuwe instantie elkaar opvolgen.
+  - **A4:** de plugin ontvangt berichten via het event `MessageReceived` en niet meer via `MQTTPlugin.Instance`.
+  - **Opgeruimd:** het statische `IsConnected`, `ClientLock`, en het schrijven van `lastConnectionSuccessful` (werd nooit gelezen; de instelling blijft tot F4). Het oude `SettingsControl` is alleen aangepast zover nodig was om te bouwen.
+  - **Nieuw gedrag:**
+    - Bij een leeg topic wordt niet geabonneerd, met een Warn. Voorheen gooide M2Mqtt hier een exceptie.
+    - Na een eigen disconnect (Save of Stop) komt er geen Warn "closed unexpectedly" meer.
+    - De startstatus van het instellingenscherm hangt alleen af van "broker ingevuld" en "verbonden".
+  - **Tests:** `MQTTClientTests` en `MessageReceivedTests` zijn vervangen door `MqttConnectionManagerTests` (met `ManagerHarness` en fakes in `ConnectionFakes.cs`), `ConnectionSettingsTests` en `M2MqttClientTests`.
 
 - **2026-10-22:** D2 bevestigd. De gebruiker gebruikt zelf geen timestamps, maar `timestamp` en `timestampIso` blijven voor andere gebruikers van de plugin. De plugin vult ze alleen (`MessageFormatter.Format`) en leest ze nergens; ze staan voor dashboardbouwers beschreven in de README. In F6 moet de README `timestampIso` en het ongewijzigd doorgeven van payloads (B11) beschrijven.
 

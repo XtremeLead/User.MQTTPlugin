@@ -71,24 +71,11 @@ namespace User.MQTTPlugin
         /// <param name="pluginManager"></param>
         public void End(PluginManager pluginManager)
         {
-            MQTTClient.StopWatchdog();
+            MqttConnectionManager.Shared.Stop(this);
+            MqttConnectionManager.Shared.MessageReceived -= OnMqttMessage;
 
             // Save settings
             this.SaveCommonSettings("GeneralSettings", Settings);
-            try
-            {
-                lock (MQTTClient.ClientLock)
-                {
-                    if (MQTTClient.CLIENT != null && MQTTClient.CLIENT.IsConnected)
-                    {
-                        MQTTClient.CLIENT.Disconnect();
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                SimHub.Logging.Current.Warn($"Error while disconnecting MQTT client during shutdown: {e.Message}");
-            }
 
             if (Instance == this)
             {
@@ -128,23 +115,21 @@ namespace User.MQTTPlugin
 
             this.AttachDelegate("MQTTMessage", () => mqttMessage);
 
-            // Start the watchdog before connecting, so a failed first connect is retried.
-            MQTTClient.StartWatchdog();
-            try
-            {
-                MQTTClient.ConnectAndSubscribe();
-            }
-            catch (Exception e)
-            {
-                SimHub.Logging.Current.Error($"MQTT connect during startup failed: {e.Message}");
-            }
+            // Connects in the background, so a slow or unreachable broker doesn't hold up SimHub (D5).
+            MqttConnectionManager.Shared.MessageReceived += OnMqttMessage;
+            MqttConnectionManager.Shared.Start(this);
+        }
+
+        internal void OnMqttMessage(string message)
+        {
+            MqttMessage = message;
         }
 
         public void AddAction(string name, string topic, string message)
         {
             this.AddAction(name, (a, b) =>
             {
-                MQTTClient.Publish(topic, message);
+                MqttConnectionManager.Shared.Publish(topic, message);
             });
         }
 

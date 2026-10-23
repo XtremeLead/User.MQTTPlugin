@@ -22,9 +22,11 @@ namespace User.MQTTPlugin.Tests
         }
 
         [TestMethod]
-        public void Reconnect_ByDefault_IsConnectAndSubscribeAsync()
+        public void Reconnect_ByDefault_ReconnectsTheSharedManager()
         {
-            Assert.AreEqual(typeof(MQTTClient).GetMethod("ConnectAndSubscribeAsync"), TestState.OriginalReconnect.Method);
+            Assert.AreEqual(
+                typeof(MqttConnectionManager).GetMethod("ReconnectSharedAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static),
+                TestState.OriginalReconnect.Method);
         }
 
         [TestMethod]

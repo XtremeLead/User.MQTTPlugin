@@ -17,7 +17,6 @@ namespace User.MQTTPlugin
     public partial class SettingsControl : UserControl
     {
         public MQTTPlugin Plugin { get; }
-        public MQTTClient Client { get; }
         private IDictionary<string, string> settings = new Dictionary<string, string>();
         private static readonly string CONNECTION_FAILED_MESSAGE = "Connection failed. Please check your settings or broker availability.";
         private static readonly string CONNECTION_SUCCESS_MESSAGE = "Successfully connected. Happy simracing!";
@@ -102,9 +101,9 @@ namespace User.MQTTPlugin
                 ConnectionStatus.Content = "Please provide MQTT settings.";
             }
 
-            if (MQTTClient.CLIENT != null || MqttSettingsFound.Count > 0)
+            if (MqttConnectionManager.Shared.IsConnected || MqttSettingsFound.Count > 0)
             {
-                ConnectionStatus.Content = MQTTClient.CLIENT.IsConnected ?
+                ConnectionStatus.Content = MqttConnectionManager.Shared.IsConnected ?
                  CONNECTION_SUCCESS_MESSAGE :
                  CONNECTION_FAILED_MESSAGE;
             }
@@ -190,16 +189,7 @@ namespace User.MQTTPlugin
             //    CONNECTION_SUCCESS_MESSAGE :
             //    CONNECTION_FAILED_MESSAGE;
 
-            bool isConnected;
-            try
-            {
-                isConnected = MQTTClient.CLIENT != null && MQTTClient.CLIENT.IsConnected;
-            }
-            catch (ObjectDisposedException)
-            {
-                isConnected = false;
-            }
-            ConnectionStatus.Content = isConnected ? CONNECTION_SUCCESS_MESSAGE : CONNECTION_FAILED_MESSAGE;
+            ConnectionStatus.Content = MqttConnectionManager.Shared.IsConnected ? CONNECTION_SUCCESS_MESSAGE : CONNECTION_FAILED_MESSAGE;
 
             btnSave.IsEnabled = true;
         }
@@ -230,7 +220,7 @@ namespace User.MQTTPlugin
             try
             {
                 bool useTls = chkUseTls.IsChecked == true;
-                bool connectionSuccessful = await MQTTClient.TestConnectionAsync(txtBroker.Text, port, txtUser.Text, txtPassword.Password, useTls);
+                bool connectionSuccessful = await MqttConnectionManager.Shared.TestAsync(new ConnectionSettings(txtBroker.Text, port, txtUser.Text, txtPassword.Password, "", useTls));
                 ConnectionStatus.Content = connectionSuccessful ?
                     CONNECTION_TEST_SUCCESS_MESSAGE :
                     CONNECTION_FAILED_MESSAGE;
