@@ -112,6 +112,8 @@ The unit tests (MSTest) live in `User.MQTTPlugin.Tests`. Build the solution in R
 
 Please add or update tests with your changes.
 
+Version 3.0 was developed with the help of [Claude Code](https://claude.com/claude-code). That is why the repository contains `CLAUDE.md` (instructions for Claude Code), `PLAN.md` and `PROGRESS.md` (the improvement plan and its progress, in Dutch), and the skills in `.claude/skills/`. You don't need any of them to build or use the plugin.
+
 ## License
 
 [MIT](https://choosealicense.com/licenses/mit/)
