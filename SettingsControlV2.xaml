@@ -5,29 +5,32 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
              xmlns:local="clr-namespace:User.MQTTPlugin"
              xmlns:styles="clr-namespace:SimHub.Plugins.Styles;assembly=SimHub.Plugins" mc:Ignorable="d"
-             xmlns:ui="clr-namespace:SimHub.Plugins.UI;assembly=SimHub.Plugins" Width="491" Height="0" MinHeight="1000">
+             xmlns:ui="clr-namespace:SimHub.Plugins.UI;assembly=SimHub.Plugins" Width="491"
+             PreviewMouseLeftButtonDown="SelectAllOnTripleClick">
     <d:DesignerProperties.DesignStyle>
         <Style TargetType="UserControl">
             <Setter Property="Background" Value="LightGray" />
         </Style>
     </d:DesignerProperties.DesignStyle>
+    <!-- SimHub doesn't scroll plugin pages, so the page scrolls itself. -->
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <Grid>
         <styles:SHSection Title="MQTT PLUGIN OPTIONS" Grid.ColumnSpan="3" Margin="0,0,0,0">
-            <StackPanel Name="stackPanel" Margin="0,-11,0,-25">
+            <StackPanel Name="stackPanel" Margin="0,-11,0,10">
                 <Label Content="MQTT Server" HorizontalAlignment="Left" />
-                <TextBox x:Name="txtBroker" Height="24" TextWrapping="Wrap" Text="" Width="348" TextChanged="TextBox_TextChanged" HorizontalAlignment="Left" Margin="102,-24,0,0"/>
+                <TextBox x:Name="txtBroker" Height="24" TextWrapping="Wrap" Text="" Width="348" TextChanged="ConnectionField_Changed" HorizontalAlignment="Left" Margin="102,-24,0,0"/>
                 <Label Content="MQTT Port" HorizontalAlignment="Left" />
-                <TextBox x:Name="txtPort" Height="23" Width="348" TextWrapping="Wrap" Text="1883" KeyDown="txtPort_KeyDown" TextChanged="TextBox_TextChanged_1" HorizontalAlignment="Left" Margin="102,-24,0,0"/>
+                <TextBox x:Name="txtPort" Height="23" Width="348" TextWrapping="Wrap" Text="1883" KeyDown="txtPort_KeyDown" TextChanged="ConnectionField_Changed" HorizontalAlignment="Left" Margin="102,-24,0,0"/>
                 <CheckBox x:Name="chkUseTls" Content="Use TLS/SSL" Checked="chkUseTls_Changed" Unchecked="chkUseTls_Changed" HorizontalAlignment="Left" Margin="102,0,0,0" />
                 <Label Content="MQTT User" HorizontalAlignment="Left" />
-                <TextBox x:Name="txtUser" Height="24" Width="348" TextWrapping="Wrap" Text="" HorizontalAlignment="Left" Margin="102,-24,0,0" TextChanged="TextBox_TextChanged_2"/>
+                <TextBox x:Name="txtUser" Height="24" Width="348" TextWrapping="Wrap" Text="" HorizontalAlignment="Left" Margin="102,-24,0,0" TextChanged="ConnectionField_Changed"/>
                 <Label Content="MQTT Password" HorizontalAlignment="Left" />
-                <PasswordBox x:Name="txtPassword" Height="24" Width="348" HorizontalAlignment="Left" Margin="102,-24,0,0" PasswordChanged="PasswordBox_TextChanged_3"/>
+                <PasswordBox x:Name="txtPassword" Height="24" Width="348" HorizontalAlignment="Left" Margin="102,-24,0,0" PasswordChanged="ConnectionField_Changed"/>
                 <Label Content="MQTT Sub Topic" HorizontalAlignment="Left" />
-                <TextBox x:Name="txtTopic" Height="24" Width="348" TextWrapping="Wrap" Text="" HorizontalAlignment="Left" Margin="102,-24,0,0" TextChanged="TextBox_TextChanged_4"/>
-                <styles:SHButtonPrimary HorizontalAlignment="Left" Margin="305,11,4,4" Click="SHButtonPrimary_Click_1">Test Connection</styles:SHButtonPrimary>
-                <styles:SHButtonPrimary x:Name="btnSave" IsEnabled="false" HorizontalAlignment="Left" Click="SHButtonPrimary_Click" Margin="4,-31,4,4">Save</styles:SHButtonPrimary>
-                <Label x:Name="ConnectionStatus" Content="" Height="28"/>
+                <TextBox x:Name="txtTopic" Height="24" Width="348" TextWrapping="Wrap" Text="" HorizontalAlignment="Left" Margin="102,-24,0,0" TextChanged="ConnectionField_Changed"/>
+                <styles:SHButtonPrimary x:Name="btnTest" HorizontalAlignment="Left" Margin="305,11,4,4" Click="btnTest_Click">Test Connection</styles:SHButtonPrimary>
+                <styles:SHButtonPrimary x:Name="btnSave" IsEnabled="false" HorizontalAlignment="Left" Click="btnSave_Click" Margin="4,-31,4,4">Save</styles:SHButtonPrimary>
+                <TextBlock x:Name="ConnectionStatus" Text="" TextWrapping="Wrap" Margin="5,5,5,5"/>
 
                 <Border BorderBrush="Gray" BorderThickness="0,1,0,0" Margin="0,15,0,15" />
 
@@ -47,16 +50,15 @@
                     <TextBlock Grid.Column="2" Text="Message" FontWeight="Bold"/>
                 </Grid>
 
-                <ScrollViewer Name="ActionsScrollViewer" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" MaxHeight="260">
-                    <StackPanel Name="stackPanelActions"/>
-                </ScrollViewer>
+                <StackPanel Name="stackPanelActions"/>
 
                 <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
                     <styles:SHButtonPrimary x:Name="btnAddAction" Click="btnAddAction_Click" Content="+ Add row" Width="100" Margin="0,0,10,0" Height="28"/>
                     <styles:SHButtonPrimary x:Name="btnSaveActions" Click="btnSaveActions_Click" Content="Save actions" Width="100" Height="28"/>
                 </StackPanel>
-                <Label x:Name="ActionsStatus" Content="" Height="28" Foreground="Gray"/>
+                <TextBlock x:Name="ActionsStatus" Text="" TextWrapping="Wrap" Foreground="Gray" Margin="5,5,5,5"/>
             </StackPanel>
         </styles:SHSection>
     </Grid>
+    </ScrollViewer>
 </UserControl>

@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "code-testing": {
+      "source": "dotnet/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/dotnet-test/skills/code-testing/SKILL.md",
+      "computedHash": "2ca3c087777e941385f96f1a234ba77dff916a73fb2cc139f40b84c47491b5ec"
+    },
+    "csharp-async": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/csharp-async/SKILL.md",
+      "computedHash": "e889958419757528e43fb674607d13fffe331a6673cfcef2b0ab8ff9fb569bb8"
+    },
+    "mqtt-development": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "mqtt-development/SKILL.md",
+      "computedHash": "15a4b898bac96be7c6dc86678dd88164716dd96d96f19d8ec106345da2cf1c82"
+    },
+    "writing-mstest-tests": {
+      "source": "dotnet/skills",
+      "sourceType": "github",
+      "skillPath": "plugins/dotnet-test/skills/writing-mstest-tests/SKILL.md",
+      "computedHash": "e4a0c9c528241267c58f456f5e0d78f97b1d6d80f4223d33eb647e360e503549"
+    }
+  }
+}

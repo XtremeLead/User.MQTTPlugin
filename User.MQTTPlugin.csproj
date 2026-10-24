@@ -69,15 +69,23 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ActionRegistration.cs" />
+    <Compile Include="ActionRules.cs" />
+    <Compile Include="ActionsSerializer.cs" />
     <Compile Include="Crypt.cs" />
-    <Compile Include="MQTTClient.cs" />
+    <Compile Include="MessageFormatter.cs" />
+    <Compile Include="ConnectionSettings.cs" />
+    <Compile Include="MqttClientAdapter.cs" />
+    <Compile Include="MqttConnectionManager.cs" />
     <Compile Include="MQTTPlugin.cs" />
     <Compile Include="MQTTPluginSettings.cs" />
     <Compile Include="MQTTSettings.cs" />
-    <Compile Include="Settings.cs" />
-    <Compile Include="SettingsControl.xaml.cs">
-      <DependentUpon>SettingsControl.xaml</DependentUpon>
-    </Compile>
+    <Compile Include="MultiClickCounter.cs" />
+    <Compile Include="PluginServices.cs" />
+    <Compile Include="SettingsRules.cs" />
+    <Compile Include="SettingsStore.cs" />
+    <Compile Include="SettingsViewLogic.cs" />
+    <Compile Include="SettingsMigration.cs" />
     <Compile Include="SettingsControlV2.xaml.cs">
       <DependentUpon>SettingsControlV2.xaml</DependentUpon>
     </Compile>
@@ -112,10 +120,6 @@
     <None Include="Resources\sdkmenuicon.png" />
   </ItemGroup>
   <ItemGroup>
-    <Page Include="SettingsControl.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
     <Page Include="SettingsControlV2.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>

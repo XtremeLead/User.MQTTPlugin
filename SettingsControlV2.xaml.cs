@@ -1,180 +1,162 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using System.Runtime.Serialization;
+using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
-using System.Xml;
+using SimHub.Plugins.UI;
 
 namespace User.MQTTPlugin
 {
     public partial class SettingsControlV2 : UserControl
     {
-        public MQTTPlugin Plugin { get; }
-        private IDictionary<string, string> settings = new Dictionary<string, string>();
-        private static readonly string CONNECTION_FAILED_MESSAGE = "Connection failed. Please check your settings or broker availability.";
-        private static readonly string CONNECTION_SUCCESS_MESSAGE = "Successfully connected. Happy simracing!";
-        private static readonly string CONNECTION_TEST_SUCCESS_MESSAGE = "Successfully connected. Click Save to Save your settings and connect.";
-        private Dictionary<string, ValueTuple<string, string>> ActionsToStore = new Dictionary<string, ValueTuple<string, string>>();
-
         private static readonly Brush PlaceholderBrush = Brushes.Gray;
 
-        public SettingsControlV2() : this(MQTTPlugin.Instance) { }
+        // The width the page has always given the control-mapping editor below an action.
+        private const double ControlsEditorWidth = (3 * 95) + (2 * 10);
 
-        public SettingsControlV2(MQTTPlugin plugin)
+        public SettingsControlV2()
         {
-            Plugin = plugin;
             InitializeComponent();
 
-            settings = MQTTSettings.LoadSettings();
-            txtBroker.Text = settings["mqttserver"];
-            txtPort.Text = settings["mqttport"];
-            txtUser.Text = settings["mqttuser"];
-            txtTopic.Text = settings["mqtttopic"];
-            chkUseTls.IsChecked = settings.TryGetValue("mqtttls", out string tlsValue) && tlsValue == "True";
+            MQTTPluginSettings settings = MQTTSettings.Current;
+            txtBroker.Text = settings.Server;
+            txtPort.Text = SettingsViewLogic.PortText(settings.Port);
+            txtUser.Text = settings.Username;
+            txtTopic.Text = settings.Topic;
+            chkUseTls.IsChecked = settings.UseTls;
+            txtPassword.Password = Crypt.UnprotectString(settings.EncryptedPassword);
 
-            try
+            foreach (MqttActionSetting action in settings.Actions)
             {
-                txtPassword.Password = Crypt.UnprotectString(settings["mqttpass"]);
-            }
-            catch (Exception)
-            {
-                txtPassword.Password = "";
+                AddRowToUi(action.Name, action.Topic, action.Message, withControlsEditor: true);
             }
 
-            LoadExistingActions();
-
-            Dictionary<string, string> MqttSettingsFound = settings
-                .Where(kvp => kvp.Key.IndexOf("mqtt") > -1 && kvp.Value != "")
-                .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-
-            if (MqttSettingsFound.Count == 0)
-            {
-                ConnectionStatus.Content = "Please provide MQTT settings.";
-            }
-
-            if (MQTTClient.CLIENT != null || MqttSettingsFound.Count > 0)
-            {
-                bool isConnected;
-                try
-                {
-                    isConnected = MQTTClient.CLIENT != null && MQTTClient.CLIENT.IsConnected;
-                }
-                catch (ObjectDisposedException)
-                {
-                    isConnected = false;
-                }
-                ConnectionStatus.Content = isConnected ? CONNECTION_SUCCESS_MESSAGE : CONNECTION_FAILED_MESSAGE;
-            }
+            ConnectionStatus.Text = SettingsViewLogic.InitialConnectionStatus(
+                SettingsRules.HasBrokerConfigured(settings), MqttConnectionManager.Shared.IsConnected);
         }
 
-        private void LoadExistingActions()
+        // --- Connection section ---
+
+        // Any change to a connection field needs a new successful Test before Save. Used for the
+        // TextChanged of the text fields and the PasswordChanged of the password field.
+        private void ConnectionField_Changed(object sender, RoutedEventArgs e)
         {
-            if (string.IsNullOrEmpty(settings["mqttactions"])) return;
-
-            try
-            {
-                ActionsToStore = (Dictionary<string, (string, string)>)SettingsControl.DeserializeDict(settings["mqttactions"], ActionsToStore.GetType());
-                foreach (var action in ActionsToStore)
-                {
-                    AddRowToUi(action.Key, action.Value.Item1, action.Value.Item2, registerImmediately: true);
-                }
-            }
-            catch (Exception ex)
-            {
-                SimHub.Logging.Current.Info($"Could not parse MQTT Actions! {ex.Message}");
-                ActionsStatus.Content = "Could not load previously saved actions — check the log.";
-            }
+            if (btnSave != null) btnSave.IsEnabled = false;
         }
-
-        // --- Connection section (unchanged behavior from SettingsControl) ---
-
-        private void TextBox_TextChanged(object sender, TextChangedEventArgs e) => StoreInSettings("mqttserver", sender);
-        private void TextBox_TextChanged_1(object sender, TextChangedEventArgs e) => StoreInSettings("mqttport", sender);
-        private void TextBox_TextChanged_2(object sender, TextChangedEventArgs e) => StoreInSettings("mqttuser", sender);
-        private void PasswordBox_TextChanged_3(object sender, RoutedEventArgs e)
-        {
-            PasswordBox passwordBox = sender as PasswordBox;
-            if (passwordBox != null)
-            {
-                if (btnSave != null) btnSave.IsEnabled = false;
-                string encrypted = Crypt.ProtectString(passwordBox.Password);
-                MQTTSettings.RememberSetting("mqttpass", encrypted);
-            }
-        }
-        private void TextBox_TextChanged_4(object sender, TextChangedEventArgs e) => StoreInSettings("mqtttopic", sender);
 
         private void chkUseTls_Changed(object sender, RoutedEventArgs e)
         {
-            MQTTSettings.RememberSetting("mqtttls", chkUseTls.IsChecked == true ? "True" : "False");
-            if (chkUseTls.IsChecked == true && txtPort.Text == "1883") txtPort.Text = "8883";
-            else if (chkUseTls.IsChecked == false && txtPort.Text == "8883") txtPort.Text = "1883";
+            string port = SettingsViewLogic.PortAfterTlsChange(chkUseTls.IsChecked, txtPort.Text);
+            if (port != txtPort.Text) txtPort.Text = port;
         }
 
-        private void StoreInSettings(string key, object sender)
+        /// <summary>The connection settings as entered, or null when the port isn't valid.</summary>
+        private ConnectionSettings ReadConnectionFields()
         {
-            if (btnSave != null) btnSave.IsEnabled = false;
-            TextBox textBox = sender as TextBox;
-            if (textBox != null)
+            if (!SettingsRules.TryParsePort(txtPort.Text, out int port)) return null;
+            return new ConnectionSettings(txtBroker.Text, port, txtUser.Text, txtPassword.Password, txtTopic.Text, chkUseTls.IsChecked == true);
+        }
+
+        private async void btnSave_Click(object sender, RoutedEventArgs e)
+        {
+            ConnectionSettings connection = ReadConnectionFields();
+            if (connection == null)
             {
-                string value = textBox.Text;
-                if (key == "mqttpass") value = Crypt.ProtectString(value);
-                MQTTSettings.RememberSetting(key, value);
-            }
-        }
-
-        private async void SHButtonPrimary_Click(object sender, RoutedEventArgs e)
-        {
-            btnSave.IsEnabled = false;
-            ConnectionStatus.Content = "Connecting...";
-            await MQTTSettings.SaveSettingsAsync();
-            bool isConnected;
-            try { isConnected = MQTTClient.CLIENT != null && MQTTClient.CLIENT.IsConnected; }
-            catch (ObjectDisposedException) { isConnected = false; }
-            ConnectionStatus.Content = isConnected ? CONNECTION_SUCCESS_MESSAGE : CONNECTION_FAILED_MESSAGE;
-            btnSave.IsEnabled = true;
-        }
-
-        private async void SHButtonPrimary_Click_1(object sender, RoutedEventArgs e)
-        {
-            if (!int.TryParse(txtPort.Text, out int port))
-            {
-                ConnectionStatus.Content = "Invalid port.";
+                ConnectionStatus.Text = SettingsViewLogic.InvalidPortMessage;
                 return;
             }
 
-            ConnectionStatus.Content = "Testing connection...";
+            btnSave.IsEnabled = false;
+            ConnectionStatus.Text = "Connecting...";
             try
             {
-                bool useTls = chkUseTls.IsChecked == true;
-                bool connectionSuccessful = await MQTTClient.TestConnectionAsync(txtBroker.Text, port, txtUser.Text, txtPassword.Password, useTls);
-                ConnectionStatus.Content = connectionSuccessful ? CONNECTION_TEST_SUCCESS_MESSAGE : CONNECTION_FAILED_MESSAGE;
-                Properties.Settings.Default["lastConnectionSuccessful"] = connectionSuccessful;
+                await MQTTSettings.SaveConnectionAsync(connection);
+            }
+            catch (Exception)
+            {
+                // MQTTSettings has logged the reason; the saved settings are unchanged.
+                ConnectionStatus.Text = SettingsViewLogic.SaveFailedMessage;
+                btnSave.IsEnabled = true;
+                return;
+            }
+            ConnectionStatus.Text = MqttConnectionManager.Shared.IsConnected ? SettingsViewLogic.ConnectionSuccessMessage : SettingsViewLogic.ConnectionFailedMessage;
+            btnSave.IsEnabled = true;
+        }
+
+        private async void btnTest_Click(object sender, RoutedEventArgs e)
+        {
+            ConnectionSettings testSettings = ReadConnectionFields();
+            if (testSettings == null)
+            {
+                ConnectionStatus.Text = SettingsViewLogic.InvalidPortMessage;
+                return;
+            }
+
+            ConnectionStatus.Text = "Testing connection...";
+            try
+            {
+                bool connectionSuccessful = await MqttConnectionManager.Shared.TestAsync(testSettings);
+                ConnectionStatus.Text = connectionSuccessful ? SettingsViewLogic.ConnectionTestSuccessMessage : SettingsViewLogic.ConnectionFailedMessage;
                 btnSave.IsEnabled = connectionSuccessful;
             }
             catch (Exception)
             {
-                ConnectionStatus.Content = CONNECTION_FAILED_MESSAGE;
+                ConnectionStatus.Text = SettingsViewLogic.ConnectionFailedMessage;
             }
+        }
+
+        [DllImport("user32.dll")]
+        private static extern uint GetDoubleClickTime();
+
+        private readonly MultiClickCounter fieldClicks = new MultiClickCounter(GetDoubleClickTime());
+
+        /// <summary>
+        /// A triple click in any text or password field on this page selects all its text.
+        /// Attached to the whole page in the preview (tunnelling) phase, so it also covers action
+        /// rows added later and runs before the field turns the click into a word selection.
+        /// </summary>
+        private void SelectAllOnTripleClick(object sender, MouseButtonEventArgs e)
+        {
+            Control field = FindTextField(e.OriginalSource as DependencyObject);
+            if (field == null) return;
+
+            int clicks = fieldClicks.Register(field, e.Timestamp);
+            if (!SettingsViewLogic.SelectsAllText(clicks)) return;
+
+            field.Focus();
+            if (field is TextBox textBox) textBox.SelectAll();
+            else if (field is PasswordBox passwordBox) passwordBox.SelectAll();
+            e.Handled = true;
+        }
+
+        private static Control FindTextField(DependencyObject element)
+        {
+            while (element != null && !(element is TextBox) && !(element is PasswordBox))
+            {
+                element = element is Visual ? VisualTreeHelper.GetParent(element) : LogicalTreeHelper.GetParent(element);
+            }
+            return element as Control;
         }
 
         private void txtPort_KeyDown(object sender, KeyEventArgs e)
         {
-            bool isDigit = (e.Key >= Key.D0 && e.Key <= Key.D9) || (e.Key >= Key.NumPad0 && e.Key <= Key.NumPad9);
-            e.Handled = !isDigit;
+            e.Handled = !SettingsViewLogic.IsPortKey(e.Key);
         }
 
-        // --- Actions section (redesigned) ---
+        // --- Actions section ---
 
         private void btnAddAction_Click(object sender, RoutedEventArgs e)
         {
-            AddRowToUi("", "", "", registerImmediately: false);
+            AddRowToUi("", "", "", withControlsEditor: false);
         }
 
-        private void AddRowToUi(string name, string topic, string message, bool registerImmediately)
+        /// <summary>
+        /// Adds an action row. A saved action also gets the control-mapping editor below it; the
+        /// action itself is registered by the plugin (Init and RegisterActions), not here.
+        /// </summary>
+        private void AddRowToUi(string name, string topic, string message, bool withControlsEditor)
         {
             Grid row = new Grid { Margin = new Thickness(0, 4, 0, 4) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(120) });
@@ -204,20 +186,25 @@ namespace User.MQTTPlugin
 
             stackPanelActions.Children.Add(row);
 
-            if (registerImmediately && !string.IsNullOrEmpty(name))
+            if (withControlsEditor && !string.IsNullOrEmpty(name))
             {
-                SimHub.Plugins.UI.ControlsEditor controlsEditor = new SimHub.Plugins.UI.ControlsEditor
-                {
-                    Name = $"ControlsEditor{stackPanelActions.Children.Count}",
-                    FriendlyName = name,
-                    ActionName = $"MQTTPlugin.{name}",
-                    Width = (3 * 95) + (2 * 10),
-                    HorizontalAlignment = HorizontalAlignment.Left
-                };
+                ControlsEditor controlsEditor = CreateControlsEditor(name, stackPanelActions.Children.Count);
                 stackPanelActions.Children.Add(controlsEditor);
                 row.Tag = controlsEditor;
-                Plugin?.AddAction(name, topic, message);
             }
+        }
+
+        /// <summary>The control-mapping editor shown below a saved action; the row keeps it in its Tag.</summary>
+        private static ControlsEditor CreateControlsEditor(string actionName, int index)
+        {
+            return new ControlsEditor
+            {
+                Name = $"ControlsEditor{index}",
+                FriendlyName = actionName,
+                ActionName = SettingsViewLogic.SimHubActionName(actionName),
+                Width = ControlsEditorWidth,
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
         }
 
         private void DeleteActionRow(Grid row)
@@ -225,7 +212,7 @@ namespace User.MQTTPlugin
             int index = stackPanelActions.Children.IndexOf(row);
             if (index < 0) return;
 
-            SimHub.Plugins.UI.ControlsEditor editor = row.Tag as SimHub.Plugins.UI.ControlsEditor;
+            ControlsEditor editor = row.Tag as ControlsEditor;
             stackPanelActions.Children.Remove(row);
 
             if (editor != null)
@@ -265,74 +252,57 @@ namespace User.MQTTPlugin
 
         private string GetRealText(TextBox box)
         {
-            return Equals(box.Foreground, PlaceholderBrush) ? "" : (box.Text ?? "").Trim();
+            return SettingsViewLogic.RealText(box.Text, Equals(box.Foreground, PlaceholderBrush));
         }
 
         private void btnSaveActions_Click(object sender, RoutedEventArgs e)
         {
-            ActionsToStore.Clear();
-            int skipped = 0;
-
             var rows = stackPanelActions.Children.OfType<Grid>().ToList();
-            foreach (Grid row in rows)
+            var texts = rows
+                .Select(row => (GetRealText((TextBox)row.Children[0]), GetRealText((TextBox)row.Children[1]), GetRealText((TextBox)row.Children[2])))
+                .ToList();
+
+            ActionsValidation validation = ActionRules.Validate(texts);
+            if (validation.HasDuplicates)
             {
-                TextBox txtName = (TextBox)row.Children[0];
-                TextBox txtTopic = (TextBox)row.Children[1];
-                TextBox txtMessage = (TextBox)row.Children[2];
+                ActionsStatus.Text = SettingsViewLogic.DuplicateActionsMessage(validation.DuplicateNames);
+                return;
+            }
 
-                string name = GetRealText(txtName);
-                string topic = GetRealText(txtTopic);
-                string message = GetRealText(txtMessage);
+            try
+            {
+                MQTTSettings.SaveActions(validation.Actions);
+            }
+            catch (Exception)
+            {
+                // MQTTSettings has logged the reason; the saved actions are unchanged.
+                ActionsStatus.Text = SettingsViewLogic.SaveActionsFailedMessage;
+                return;
+            }
 
-                if (string.IsNullOrEmpty(name) || string.IsNullOrEmpty(topic) || string.IsNullOrEmpty(message))
-                {
-                    skipped++;
-                    continue;
-                }
+            // Register with the live plugin; this page may belong to an instance that has ended.
+            MQTTPlugin.Instance?.RegisterActions(MQTTSettings.Current.Actions);
 
-                ActionsToStore[name] = (topic, message);
-                Plugin?.AddAction(name, topic, message);
+            foreach (int rowIndex in validation.SavedRows)
+            {
+                Grid row = rows[rowIndex];
+                string name = texts[rowIndex].Item1;
 
-                if (row.Tag is SimHub.Plugins.UI.ControlsEditor existingEditor)
+                if (row.Tag is ControlsEditor existingEditor)
                 {
                     existingEditor.FriendlyName = name;
-                    existingEditor.ActionName = $"MQTTPlugin.{name}";
+                    existingEditor.ActionName = SettingsViewLogic.SimHubActionName(name);
                 }
                 else
                 {
                     int index = stackPanelActions.Children.IndexOf(row);
-                    SimHub.Plugins.UI.ControlsEditor controlsEditor = new SimHub.Plugins.UI.ControlsEditor
-                    {
-                        Name = $"ControlsEditor{index}",
-                        FriendlyName = name,
-                        ActionName = $"MQTTPlugin.{name}",
-                        Width = (3 * 95) + (2 * 10),
-                        HorizontalAlignment = HorizontalAlignment.Left
-                    };
+                    ControlsEditor controlsEditor = CreateControlsEditor(name, index);
                     stackPanelActions.Children.Insert(index + 1, controlsEditor);
                     row.Tag = controlsEditor;
                 }
             }
 
-            Properties.Settings.Default["mqttactions"] = SerializeDict(ActionsToStore);
-            Properties.Settings.Default.Save();
-
-            ActionsStatus.Content = skipped == 0
-                ? $"Saved {ActionsToStore.Count} action(s)."
-                : $"Saved {ActionsToStore.Count} action(s); {skipped} incomplete row(s) skipped — fill in all three fields.";
-        }
-
-        private string SerializeDict(Dictionary<string, ValueTuple<string, string>> tuple)
-        {
-            DataContractSerializer serializer = new DataContractSerializer(tuple.GetType());
-            using (StringWriter sw = new StringWriter())
-            using (XmlTextWriter writer = new XmlTextWriter(sw))
-            {
-                writer.Formatting = Formatting.Indented;
-                serializer.WriteObject(writer, tuple);
-                writer.Flush();
-                return sw.ToString();
-            }
+            ActionsStatus.Text = SettingsViewLogic.ActionsSavedMessage(validation.Actions.Count, validation.SkippedCount);
         }
     }
 }

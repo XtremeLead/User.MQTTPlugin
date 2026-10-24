@@ -1,6 +1,7 @@
 ﻿using GameReaderCommon;
 using SimHub.Plugins;
 using System;
+using System.Collections.Generic;
 using System.Windows.Media;
 
 namespace User.MQTTPlugin
@@ -10,7 +11,10 @@ namespace User.MQTTPlugin
     [PluginName("MQTT plugin")]
     public class MQTTPlugin : IPlugin, IDataPlugin, IWPFSettingsV2
     {
-        public MQTTPluginSettings Settings;
+        private static readonly IPluginLog Log = new SimHubLog();
+
+        // The PluginManager passed to Init, used to clear and register actions.
+        private PluginManager actionsPluginManager;
 
         public static MQTTPlugin Instance { get; private set; }
 
@@ -29,7 +33,8 @@ namespace User.MQTTPlugin
         /// </summary>
         public string LeftMenuTitle => "MQTT plugin";
 
-        private string mqttMessage = "";
+        // Written by the M2Mqtt receive thread, read by SimHub through the delegate attached in Init.
+        private volatile string mqttMessage = "";
 
         public string MqttMessage
         {
@@ -39,10 +44,7 @@ namespace User.MQTTPlugin
             }
             set
             {
-
-                //mqttMessage = timestamp + ": " + value;
                 mqttMessage = value;
-                this.AttachDelegate("MQTTMessage", () => mqttMessage);
             }
         }
         /// <summary>
@@ -56,14 +58,7 @@ namespace User.MQTTPlugin
         /// <param name="data">Current game data, including current and previous data frame.</param>
         public void DataUpdate(PluginManager pluginManager, ref GameData data)
         {
-            // Define the value of our property (declared in init)
-            if (data.GameRunning)
-            {
-                if (data.OldData != null && data.NewData != null)
-                {
-
-                }
-            }
+            // Intentionally empty: data arrives from MQTT, not from the game loop.
         }
 
         /// <summary>
@@ -73,24 +68,10 @@ namespace User.MQTTPlugin
         /// <param name="pluginManager"></param>
         public void End(PluginManager pluginManager)
         {
-            MQTTClient.StopWatchdog();
+            MqttConnectionManager.Shared.Stop(this);
+            MqttConnectionManager.Shared.MessageReceived -= OnMqttMessage;
 
-            // Save settings
-            this.SaveCommonSettings("GeneralSettings", Settings);
-            try
-            {
-                lock (MQTTClient.ClientLock)
-                {
-                    if (MQTTClient.CLIENT != null && MQTTClient.CLIENT.IsConnected)
-                    {
-                        MQTTClient.CLIENT.Disconnect();
-                    }
-                }
-            }
-            catch (Exception e)
-            {
-                SimHub.Logging.Current.Info($"Error while disconnecting MQTT client during shutdown: {e.Message}");
-            }
+            // Nothing to save here: MQTTSettings saves every change right away.
 
             if (Instance == this)
             {
@@ -105,10 +86,7 @@ namespace User.MQTTPlugin
         /// <returns></returns>
         public System.Windows.Controls.Control GetWPFSettingsControl(PluginManager pluginManager)
         {
-            const bool useRedesignedSettingsUI = true;
-            return useRedesignedSettingsUI
-                ? (System.Windows.Controls.Control)new SettingsControlV2(this)
-                : new SettingsControl(this);
+            return new SettingsControlV2();
         }
 
         /// <summary>
@@ -122,28 +100,38 @@ namespace User.MQTTPlugin
 
             Instance = this;
 
-            // always try to connect
-            MQTTClient.ConnectAndSubscribe();
-            MQTTClient.StartWatchdog();
+            // Load the settings from SimHub's storage; the first time, this migrates them from user.config (D1).
+            MQTTSettings.Initialize(new SimHubSettingsStore(this), LegacySettings.Load);
 
-            // Load settings
-            Settings = this.ReadCommonSettings<MQTTPluginSettings>("GeneralSettings", () => new MQTTPluginSettings());
-
-            // Declare a property available in the property list, this gets evaluated "on demand" (when shown or used in formulas)
-            this.AttachDelegate("CurrentDateTime", () => DateTime.Now);
-
+            // The property MQTTPlugin.MQTTMessage; SimHub reads it on demand (when shown or used in formulas).
             this.AttachDelegate("MQTTMessage", () => mqttMessage);
 
+            // Register the saved actions now, so they work without opening the settings page (B4).
+            actionsPluginManager = pluginManager;
+            RegisterActions(MQTTSettings.Current.Actions);
+
+            // Connects in the background, so a slow or unreachable broker doesn't hold up SimHub (D5).
+            MqttConnectionManager.Shared.MessageReceived += OnMqttMessage;
+            MqttConnectionManager.Shared.Start(this);
         }
 
-        public void AddAction(string name, string topic, string message)
+        internal void OnMqttMessage(string message)
         {
-            this.AddAction(name, (a, b) =>
-            {
-                MQTTClient.Publish(topic, message);
-            });
+            MqttMessage = message;
         }
 
+        /// <summary>
+        /// Replaces all registered MQTT actions with <paramref name="actions"/>. Called from Init
+        /// and when the actions are saved on the settings page.
+        /// </summary>
+        internal void RegisterActions(IEnumerable<MqttActionSetting> actions)
+        {
+            ActionRegistration.Register(
+                new SimHubActionRegistry(this, actionsPluginManager ?? PluginManager),
+                actions,
+                MqttConnectionManager.Shared.Publish,
+                Log);
+        }
 
     }
 }
