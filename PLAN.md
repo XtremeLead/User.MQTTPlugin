@@ -87,6 +87,17 @@ Elk punt heeft een vaste code (B = bug, A = architectuur, L = leesbaarheid, T = 
 - **Gevolg:** de melding over dubbele namen valt deels weg. Op een klein scherm zijn de onderste acties en knoppen niet te bereiken.
 - **Oplossing (in F3 meegenomen):** de hele pagina in één `ScrollViewer`, geen vaste hoogte en geen aparte scrollbox voor de acties. De statusregels worden `TextBlock`s met `TextWrapping="Wrap"`.
 
+### B13. TLS accepteert elk certificaat van de broker
+*Bevestigd, toegevoegd op 2026-10-24 na het openbaar maken van de repository.*
+- **Oorzaak:** `M2MqttClientFactory.Create` ([MqttClientAdapter.cs:39-45](MqttClientAdapter.cs#L39-L45)) gebruikt de M2Mqtt-constructor met `sslProtocol` en twee callbacks, en geeft voor beide `null` mee. M2Mqtt controleert het certificaat van de broker dan niet.
+- **Experiment:** tegen `test.mosquitto.org:8883` wijst de standaardcontrole van .NET (`SslStream.AuthenticateAsClient`) het certificaat af, omdat Windows de CA van mosquitto niet vertrouwt. Via M2Mqtt komt de verbinding toch tot stand. Poort 8886 (Let's Encrypt) verbindt in beide gevallen.
+- **Gevolg:** met **Use TLS** aan is de verbinding versleuteld, maar iemand die het netwerkverkeer kan onderscheppen, kan zich voordoen als de broker en krijgt dan de gebruikersnaam en het wachtwoord. De valkuil in `CLAUDE.md` ("niet gecontroleerd tegen een CA") beschrijft dit te mild.
+- **Richting (D7):** standaard de normale certificaatcontrole van Windows toepassen, met een instelling "Allow untrusted certificate" voor brokers met een zelfondertekend certificaat.
+  - Een eigen `RemoteCertificateValidationCallback` meegeven, die accepteert als `SslPolicyErrors.None` is of als de instelling aan staat. Die beslissing komt in een pure helper met tests.
+  - De instelling komt in `MQTTPluginSettings` en `ConnectionSettings`, en als vinkje op het instellingenscherm, alleen actief als TLS aan staat.
+  - Een afgewezen certificaat geeft een duidelijke Warn in het log en een melding bij Test, met de hint om het vinkje te gebruiken.
+  - **Bestaande gebruikers:** wie TLS gebruikt met een zelfondertekend certificaat, verliest na de update de verbinding tot het vinkje aan staat. Dat komt in de CHANGELOG en de README.
+
 ## Architectuur
 
 ### A1. Globale statische toestand in `MQTTClient`
@@ -159,6 +170,7 @@ Elke fase levert een werkende, bouwbare plugin op met MSTest-tests, zoals [CLAUD
 | **F4. Instellingenmodel en opslag** | Getypeerd model in `ReadCommonSettings` en eenmalige migratie van de huidige `user.config` (zie D1). | B5, A2, T3, L2 |
 | **F5. Opruimen en leesbaarheid** | Oude `SettingsControl` en template-resten weg (zie D3). Handlers hernoemen en dubbele logica samenvoegen. | A5, L1, L3, L4, L5 |
 | **F6. Documentatie** | README en de architectuursectie van CLAUDE.md bijwerken naar de nieuwe opzet. | — |
+| **F7. TLS-certificaat controleren** | Toegevoegd op 2026-10-24. Certificaatcontrole met de instelling "Allow untrusted certificate" (zie D7), met tests voor de helper, het model en de migratie. Valkuil in CLAUDE.md, README, `SECURITY.md` en CHANGELOG bijwerken. | B13 |
 
 ## Beslissingen
 
@@ -175,3 +187,5 @@ Elke fase levert een werkende, bouwbare plugin op met MSTest-tests, zoals [CLAUD
 - **D3. Oude `SettingsControl` verwijderen?**
   - **Aanpassing (2026-10-24):** op verzoek naar F4 gehaald, omdat het oude scherm voor het nieuwe instellingenmodel helemaal omgebouwd had moeten worden.
   - **Besluit (2026-10-21):** ja, in F5. Het scherm wordt nooit getoond, omdat `GetWPFSettingsControl` via een constante altijd V2 kiest. Bij laten staan zou het in F2–F4 telkens mee aangepast moeten worden. `DeserializeDict` verhuist in F3 naar de serializer-helper. Terughalen kan via git.
+- **D7. Hoe moet TLS het certificaat van de broker controleren (B13)?** Opties: altijd controleren (breekt zelfondertekende certificaten), standaard controleren met een instelling om onbetrouwbare certificaten toe te staan, of alleen documenteren.
+  - **Besluit (2026-10-24):** standaard controleren, met de instelling "Allow untrusted certificate". Veilig voor wie een vertrouwd certificaat heeft, en thuisbrokers met een zelfondertekend certificaat blijven met één vinkje werken.

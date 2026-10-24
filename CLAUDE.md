@@ -15,7 +15,7 @@ A SimHub plugin (.NET Framework 4.8, WPF, old-style non-SDK `.csproj` with `pack
 
 ## Plan and progress
 
-- [PLAN.md](PLAN.md) is the agreed improvement plan. Bugs, architecture, readability and testability items have fixed codes (B1, A1, L1, T1, ...), work is grouped into phases (F0, F0b, F1–F6, all done by 2026-10-24), and decisions are listed (D1–D6, all decided). Refer to items by code; give new bugs or decisions the next free code (B13, D7, ...). Don't change the plan's content without the user's agreement.
+- [PLAN.md](PLAN.md) is the agreed improvement plan. Bugs, architecture, readability and testability items have fixed codes (B1, A1, L1, T1, ...), work is grouped into phases (F0, F0b, F1–F6, all done by 2026-10-24; F7 for B13 is open), and decisions are listed (D1–D7, all decided). Refer to items by code; give new bugs or decisions the next free code (B14, D8, ...). Don't change the plan's content without the user's agreement.
 - [PROGRESS.md](PROGRESS.md) tracks progress. Update it after every completed step: the phase and item status, any decisions with their date, and a new log line at the top. Mark an item ✅ only after it is built and its tests pass.
 - Both files are written in Dutch, so keep them in Dutch.
 
@@ -90,7 +90,7 @@ Unit tests are required. Use **MSTest**.
 
 - SimHub calls `End` on the old plugin instance before `Init` on the new one when the game changes (seen in F2), so the connection briefly stops and starts again.
 - Renaming an action creates a new action name. A control mapping made under Controls and events for the old name stays behind and has to be mapped again.
-- `M2MqttClientFactory` passes `null` as the CA certificate, so TLS connections don't verify the broker certificate against a CA.
+- `M2MqttClientFactory` passes no certificate validation callback, and M2Mqtt then accepts any broker certificate, even one Windows rejects (confirmed against `test.mosquitto.org:8883`). Fixing this is B13 (F7, D7).
 - The UI event handlers in `SettingsControlV2` update WPF controls after `await`. Don't add `ConfigureAwait(false)` there, because the continuation must run on the UI thread.
 
 ## Project skills

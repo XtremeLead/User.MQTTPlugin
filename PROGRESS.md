@@ -16,6 +16,7 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | F4. Instellingenmodel en opslag | ✅ | 241 tests groen; migratie, opslaan en herstart handmatig bevestigd in SimHub |
 | F5. Opruimen en leesbaarheid | ✅ | 242 tests groen; opstarten, instellingenpagina en acties handmatig bevestigd in SimHub |
 | F6. Documentatie | ✅ | README herschreven voor de nieuwe opzet; CLAUDE.md nagelopen |
+| F7. TLS-certificaat controleren | ⬜ | Toegevoegd op 2026-10-24 voor B13 |
 
 ## Punten
 
@@ -33,6 +34,7 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | B10 | Ruis in het log, stille publish | F1 | ✅ |
 | B11 | JSON-payloads worden herschreven (tijdzone, decimalen) | F1 | ✅ |
 | B12 | Instellingenscherm: meldingen afgekapt, niet scrollbaar | F3 | ✅ (ook handmatig bevestigd in SimHub) |
+| B13 | TLS accepteert elk certificaat van de broker | F7 | ⬜ |
 | A1 | Verbindingsbeheerder in plaats van statische toestand | F2 | ✅ |
 | A2 | Eén getypeerd instellingenmodel | F4 | ✅ |
 | A3 | Acties bij de plugin | F3 | ✅ |
@@ -51,9 +53,12 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | D5 | Moet `Init` wachten op de eerste verbinding? | Nee, de eerste verbinding gebeurt op de achtergrond | 2026-10-22 |
 | D6 | Dubbele actienamen? | Save weigeren met een melding; hoofd- en kleine letters tellen als dezelfde naam | 2026-10-23 |
 | D3 | Oude `SettingsControl` verwijderen? | Ja, in F5; `DeserializeDict` gaat in F3 naar de serializer-helper. Aangepast op 2026-10-24: verwijderen al in F4 | 2026-10-21 |
+| D7 | Hoe moet TLS het brokercertificaat controleren (B13)? | Standaard controleren, met de instelling "Allow untrusted certificate" voor zelfondertekende certificaten | 2026-10-24 |
 
 ## Log
 
+- **2026-10-24:** B13 met de gebruiker in het plan opgenomen: nieuwe fase F7 en beslissing D7 (standaard controleren, met de instelling "Allow untrusted certificate"). De valkuil in `CLAUDE.md` beschrijft het gedrag nu correct en verwijst naar B13.
+- **2026-10-24:** `SECURITY.md` toegevoegd (ondersteunde versies, melden via GitHub's private vulnerability reporting, bekende beperkingen). Daarbij gecontroleerd hoe TLS de broker controleert: tegen test.mosquitto.org:8883, waarvan Windows het certificaat afwijst, maakt M2Mqtt toch verbinding. De plugin accepteert dus elk certificaat. Dat is ernstiger dan de valkuil in `CLAUDE.md` beschrijft. Mogelijk nieuw punt (B13); nog niet in het plan opgenomen.
 - **2026-10-24:** De gebruiker heeft bevestigd dat het nieuwe icoon in SimHub verschijnt. Versie 3.0.1 voorbereid: `AssemblyVersion`/`AssemblyFileVersion` staan op 3.0.1.0 en `CHANGELOG.md` heeft een sectie 3.0.1 met de licentie en het icoon. De gebruiker commit, merget en tagt zelf, en maakt daarna de repository openbaar.
 - **2026-10-24:** Voorbereiding om de repository openbaar te maken, buiten het plan. Het wachtwoord dat in de eerste commit stond, is door de gebruiker vervangen; de geschiedenis blijft zoals ze is. `LICENSE` (MIT, Maarten van der Kraan) is toegevoegd en de README verwijst ernaar. Het menu-icoon uit het SimHub-SDK-sjabloon (`sdkmenuicon.png`) is vervangen door een eigen icoon, `Resources/mqttmenuicon.png` (een stip met twee bogen aan elke kant), getest met `PictureIcon_Is24By24`. Er zijn nu 243 tests en ze slagen allemaal. Het icoon in het menu van SimHub moet nog handmatig worden gecontroleerd. De lokale branch `test` is verwijderd; de tag v1.0.0 wijst nog naar de commit ervan.
 - **2026-10-24:** Versiebeheer, buiten het plan: de bestaande tags v1.0.0–v2.0.2 blijven staan, en de verbeterde versie wordt v3.0.0 (afgesproken met de gebruiker). `AssemblyVersion`/`AssemblyFileVersion` staan nu op 3.0.0.0, `CHANGELOG.md` beschrijft alle versies en de README verwijst ernaar. De gebruiker merget en tagt zelf.
