@@ -54,6 +54,8 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 
 ## Log
 
+- **2026-10-24:** Versiebeheer, buiten het plan: de bestaande tags v1.0.0–v2.0.2 blijven staan, en de verbeterde versie wordt v3.0.0 (afgesproken met de gebruiker). `AssemblyVersion`/`AssemblyFileVersion` staan nu op 3.0.0.0, `CHANGELOG.md` beschrijft alle versies en de README verwijst ernaar. De gebruiker merget en tagt zelf.
+
 - **2026-10-24:** De gebruiker heeft bevestigd dat de SimHub-propertylijst alleen nog `MQTTPlugin.MQTTMessage` toont; `CurrentDateTime` is weg (F5, A5).
 
 - **2026-10-24:** F6 afgerond; daarmee zijn alle fasen klaar.

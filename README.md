@@ -83,7 +83,7 @@ The property always holds the latest message. With a wildcard topic, check `mess
 
 The settings and actions are stored in `C:\Program Files (x86)\SimHub\PluginsData\Common\MQTTPlugin.GeneralSettings.json`, so they survive SimHub updates. SimHub keeps earlier versions of this file in the `_Backups` folder next to it. The password is encrypted for your Windows user account; another user or PC can't decrypt it, and then has to enter it again.
 
-Older versions of the plugin stored their settings in a `user.config` file that was lost on SimHub updates. The first time this version starts, it takes over those settings and actions once. The old file is left untouched.
+Versions before 3.0 stored their settings in a `user.config` file that was lost on SimHub updates. The first time version 3.0 or later starts, it takes over those settings and actions once. The old file is left untouched.
 
 ### Logging
 
@@ -94,6 +94,10 @@ The plugin writes to the SimHub log:
 - problems that lose data, such as a password or settings that couldn't be read or saved, at Error.
 
 Received and published messages are only logged at Debug level.
+
+## Versions
+
+The changes in each version are listed in [CHANGELOG.md](CHANGELOG.md). Downloads are under Releases on GitHub.
 
 ## Contributing
 
