@@ -14,8 +14,8 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | F2. Verbindingsbeheerder | ✅ | 186 tests groen; handmatig bevestigd in SimHub (opstarten, Test, Save met nieuw topic, gamewissel, acties, afsluiten) |
 | F3. Acties naar de plugin | ✅ | Tests groen; B4, B12 en acties (opstarten, koppelingen, dubbele namen, hernoemen, verwijderen) handmatig bevestigd in SimHub |
 | F4. Instellingenmodel en opslag | ✅ | 241 tests groen; migratie, opslaan en herstart handmatig bevestigd in SimHub |
-| F5. Opruimen en leesbaarheid | 🔄 | Gebouwd, 242 tests groen (3 runs na elkaar); wacht op handmatige controle in SimHub |
-| F6. Documentatie | ⬜ | |
+| F5. Opruimen en leesbaarheid | ✅ | 242 tests groen; opstarten, instellingenpagina en acties handmatig bevestigd in SimHub |
+| F6. Documentatie | ✅ | README herschreven voor de nieuwe opzet; CLAUDE.md nagelopen |
 
 ## Punten
 
@@ -53,6 +53,19 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | D3 | Oude `SettingsControl` verwijderen? | Ja, in F5; `DeserializeDict` gaat in F3 naar de serializer-helper. Aangepast op 2026-10-24: verwijderen al in F4 | 2026-10-21 |
 
 ## Log
+
+- **2026-10-24:** De gebruiker heeft bevestigd dat de SimHub-propertylijst alleen nog `MQTTPlugin.MQTTMessage` toont; `CurrentDateTime` is weg (F5, A5).
+
+- **2026-10-24:** F6 afgerond; daarmee zijn alle fasen klaar.
+  - **README:** herschreven voor de nieuwe opzet:
+    - bouwen, met SimHub gesloten en de tip voor MC1000;
+    - verbinden: eerst Test, dan Save; TLS en de herhaalpogingen;
+    - acties: Save actions, unieke namen, en hernoemen of verwijderen;
+    - het berichtformaat, met `timestampIso` en de payload die ongewijzigd wordt doorgegeven;
+    - de opslaglocatie en de eenmalige overname uit `user.config`;
+    - de logniveaus en de testcommando's.
+  - **CLAUDE.md:** nagelopen. Fasen en beslissingen zijn bijgewerkt (F0b, D1–D6), er is een tip voor MC1000 toegevoegd, en de uitleg over characterization-tests is aangepast (er zijn er geen meer over).
+  - **Eerder in deze fase:** F5 is door de gebruiker bevestigd in SimHub (opstarten, instellingenpagina, acties). Het verdwijnen van `CurrentDateTime` uit de propertylijst is niet apart genoemd.
 
 - **2026-10-24:** F5 gebouwd. Er zijn nu 242 tests, en drie runs na elkaar slaagden allemaal (na een Rebuild).
   - **A5:**

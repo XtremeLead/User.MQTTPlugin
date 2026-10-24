@@ -15,7 +15,7 @@ A SimHub plugin (.NET Framework 4.8, WPF, old-style non-SDK `.csproj` with `pack
 
 ## Plan and progress
 
-- [PLAN.md](PLAN.md) is the agreed improvement plan. Bugs, architecture, readability and testability items have fixed codes (B1, A1, L1, T1, ...), work is grouped into phases (F0–F6), and decisions are listed (D1–D3, all decided). Follow the phase order and refer to items by code. Don't change the plan's content without the user's agreement.
+- [PLAN.md](PLAN.md) is the agreed improvement plan. Bugs, architecture, readability and testability items have fixed codes (B1, A1, L1, T1, ...), work is grouped into phases (F0, F0b, F1–F6, all done by 2026-10-24), and decisions are listed (D1–D6, all decided). Refer to items by code; give new bugs or decisions the next free code (B13, D7, ...). Don't change the plan's content without the user's agreement.
 - [PROGRESS.md](PROGRESS.md) tracks progress. Update it after every completed step: the phase and item status, any decisions with their date, and a new log line at the top. Mark an item ✅ only after it is built and its tests pass.
 - Both files are written in Dutch, so keep them in Dutch.
 
@@ -26,6 +26,7 @@ A SimHub plugin (.NET Framework 4.8, WPF, old-style non-SDK `.csproj` with `pack
 ```
 
 - **Debug** builds write output straight into `C:\Program Files (x86)\SimHub\`, which is how the plugin gets deployed. That means the build needs write access to that folder, and it fails if SimHub is running, because SimHub locks the DLL. **Release** builds write to `bin\Release\`.
+- If the WPF markup compiler fails with `MC1000` ("Unknown build error, 'Object reference not set…'"), usually after a XAML file was removed, run the build again with `-t:Rebuild`.
 - SimHub assemblies (`SimHub.Plugins`, `GameReaderCommon`, `SimHub.Logging`, `log4net`) are referenced from the SimHub install folder, so SimHub must be installed to build.
 - NuGet packages go in `packages\`. If they are missing, restore them with `nuget restore User.MQTTPlugin.sln` or `msbuild -t:restore -p:RestorePackagesConfig=true`.
 - There is no linter. Behaviour that unit tests can't cover (SimHub integration, the WPF UI, a real broker) is verified by building, restarting SimHub, and checking the SimHub log. Everything is logged through `SimHub.Logging.Current`: lifecycle at Info, failed connects and dropped publishes at Warn, failures that lose data at Error, and every received or published message at Debug only.
@@ -50,7 +51,7 @@ Unit tests are required. Use **MSTest**.
   & $vstest .\User.MQTTPlugin.Tests\bin\Release\User.MQTTPlugin.Tests.dll /TestCaseFilter:"FullyQualifiedName~CryptTests.ProtectString_DoesNotReturnPlainText"   # one test
   ```
 
-- **Characterization tests:** tests whose comment starts with `Current behaviour (Bx)` pin a known bug from [PLAN.md](PLAN.md). The phase that fixes Bx changes them on purpose. Tests that need a failing host use `broker.invalid`, which always fails DNS and never connects.
+- **Characterization tests:** to pin a known bug before fixing it, start the test's comment with `Current behaviour (Bx)`; the fix changes that test on purpose. None are left. Tests that need a failing host use `broker.invalid`, which always fails DNS and never connects.
 - **Connection tests:** never start `MqttConnectionManager.Shared`. Build a manager with [ConnectionFakes.cs](User.MQTTPlugin.Tests/ConnectionFakes.cs) `ManagerHarness`, which wires up `FakeMqttClientFactory`/`FakeMqttClient` (connect, drop, receive, block a connect through `ConnectHook`), `FakePluginLog`, `FakeClock`, `FakeTimer`, an instant backoff delay and editable saved settings. Wait on the returned tasks with a timeout.
 - **Settings seams:** `MQTTSettings.Reconnect` and `MQTTSettings.Log` are static fields that tests replace, and `MQTTSettings.Initialize` takes the store (`IPluginSettingsStore`) and the legacy loader. [TestState.cs](User.MQTTPlugin.Tests/TestState.cs) `Reset()` initializes `MQTTSettings` from a `FakePluginSettingsStore` with migrated defaults, a `FakePluginLog` and a no-op reconnect. Call it in `[TestInitialize]` and `[TestCleanup]`. Only `LegacySettingsTests` reads the real `Properties.Settings` (the test host has no `user.config`); nothing writes it.
 - **Log assertions:** code with an `IPluginLog` is checked with `FakePluginLog`. For code that still logs through `SimHub.Logging.Current` directly (`Crypt`), [LogCapture.cs](User.MQTTPlugin.Tests/LogCapture.cs) attaches a log4net `MemoryAppender`; use it in a `using` block.
