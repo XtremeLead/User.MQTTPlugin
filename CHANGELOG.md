@@ -2,6 +2,16 @@
 
 All notable changes to MQTT Plugin are listed here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and version numbers follow [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The plugin has its own icon in SimHub's left menu instead of the SimHub SDK sample icon.
+
+### Added
+
+- A `LICENSE` file (MIT).
+
 ## [3.0.0] - 2026-10-24
 
 A major rework of the plugin. Settings are stored in a new place, so this is a new major version: after upgrading, going back to 2.x means entering your settings again.
@@ -86,6 +96,7 @@ First release.
 - Publishes MQTT messages through configurable SimHub actions.
 - Stores the password encrypted for the Windows user.
 
+[Unreleased]: https://github.com/XtremeLead/User.MQTTPlugin/compare/v3.0.0...HEAD
 [3.0.0]: https://github.com/XtremeLead/User.MQTTPlugin/compare/v2.0.2...v3.0.0
 [2.0.2]: https://github.com/XtremeLead/User.MQTTPlugin/compare/v2.0.1...v2.0.2
 [2.0.1]: https://github.com/XtremeLead/User.MQTTPlugin/compare/v2.0.0...v2.0.1

@@ -116,4 +116,4 @@ Version 3.0 was developed with the help of [Claude Code](https://claude.com/clau
 
 ## License
 
-[MIT](https://choosealicense.com/licenses/mit/)
+[MIT](LICENSE)

@@ -117,7 +117,7 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="README.md" />
-    <None Include="Resources\sdkmenuicon.png" />
+    <None Include="Resources\mqttmenuicon.png" />
   </ItemGroup>
   <ItemGroup>
     <Page Include="SettingsControlV2.xaml">

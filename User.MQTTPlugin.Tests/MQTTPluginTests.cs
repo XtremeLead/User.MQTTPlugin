@@ -39,6 +39,17 @@ namespace User.MQTTPlugin.Tests
             Assert.AreEqual("MQTT plugin", new MQTTPlugin().LeftMenuTitle);
         }
 
+        // SimHub shows the icon in its left menu, next to LeftMenuTitle.
+        [TestMethod]
+        public void PictureIcon_Is24By24()
+        {
+            var icon = new MQTTPlugin().PictureIcon;
+
+            Assert.IsNotNull(icon);
+            Assert.AreEqual(24, icon.Width);
+            Assert.AreEqual(24, icon.Height);
+        }
+
         // Actions and the MQTTMessage property appear in SimHub as "MQTTPlugin.<name>", and
         // dashboards and control mappings refer to that name, so the class name must stay.
         [TestMethod]
