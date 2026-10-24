@@ -14,7 +14,7 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | F2. Verbindingsbeheerder | ✅ | 186 tests groen; handmatig bevestigd in SimHub (opstarten, Test, Save met nieuw topic, gamewissel, acties, afsluiten) |
 | F3. Acties naar de plugin | ✅ | Tests groen; B4, B12 en acties (opstarten, koppelingen, dubbele namen, hernoemen, verwijderen) handmatig bevestigd in SimHub |
 | F4. Instellingenmodel en opslag | ✅ | 241 tests groen; migratie, opslaan en herstart handmatig bevestigd in SimHub |
-| F5. Opruimen en leesbaarheid | ⬜ | |
+| F5. Opruimen en leesbaarheid | 🔄 | Gebouwd, 242 tests groen (3 runs na elkaar); wacht op handmatige controle in SimHub |
 | F6. Documentatie | ⬜ | |
 
 ## Punten
@@ -37,8 +37,8 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | A2 | Eén getypeerd instellingenmodel | F4 | ✅ |
 | A3 | Acties bij de plugin | F3 | ✅ |
 | A4 | Berichtverwerking los van bijwerkingen | F1/F2 | ✅ |
-| A5 | Oude code en template-resten weg | F5 | 🔄 oude `SettingsControl` al weg in F4 (D3); template-resten in F5 |
-| L1–L6 | Leesbaarheid | F1/F4/F5 | 🔄 L6 ✅ (F1), L2 ✅ (F4); L1, L3–L5 in F5 |
+| A5 | Oude code en template-resten weg | F5 | ✅ |
+| L1–L6 | Leesbaarheid | F1/F4/F5 | ✅ L6 (F1), L2 (F4), L1, L3, L4 en L5 (F5) |
 | T1–T5 | Testbaarheid | F0b/F2 | ✅ T1 en T3 (F0b), T2, T4 en T5 (F2) |
 
 ## Beslissingen
@@ -53,6 +53,16 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | D3 | Oude `SettingsControl` verwijderen? | Ja, in F5; `DeserializeDict` gaat in F3 naar de serializer-helper. Aangepast op 2026-10-24: verwijderen al in F4 | 2026-10-21 |
 
 ## Log
+
+- **2026-10-24:** F5 gebouwd. Er zijn nu 242 tests, en drie runs na elkaar slaagden allemaal (na een Rebuild).
+  - **A5:**
+    - `SpeedWarningLevel` is uit het model; in een bestaand JSON-bestand wordt het genegeerd en bij de volgende save verdwijnt het.
+    - De SimHub-property `CurrentDateTime` is weg. De gebruiker heeft bevestigd dat die niet gebruikt wordt; hij kwam uit de voorbeeldplugin.
+    - De lege `if`-blokken in `DataUpdate` zijn weg.
+    - `Settings.cs`, een template-bestand met alleen uitgecommentarieerde code (L3), is verwijderd.
+  - **L1:** de handlers heten nu `btnTest_Click`, `btnSave_Click` en `ConnectionField_Changed`, in plaats van `SHButtonPrimary_Click(_1)`, `TextBox_TextChanged(_1/_2/_4)` en `PasswordBox_TextChanged_3`. De Test-knop heeft nu de naam `btnTest`.
+  - **L4:** het aanmaken van de koppelingseditor staat in één `CreateControlsEditor`, met de constante `ControlsEditorWidth`. `SettingsViewLogic.SimHubActionName` geeft de naam `MQTTPlugin.<naam>` en is getest.
+  - **L5:** de namen die het plan noemde (`CLIENT`, `SETTINGS`, `LogMessage`, `ActionsToStore`) waren al in eerdere fasen verdwenen. `Crypt` is nu `internal static`, de ongebruikte `using`s zijn weg, en het ongebruikte `Plugin`-veld en de extra constructor van `SettingsControlV2` zijn verwijderd.
 
 - **2026-10-24:** F4 afgerond na een handmatige controle door de gebruiker.
   - **Eerste start:** het log toont "Migrated MQTT settings from user.config: broker '172.16.4.10', 6 action(s).", gevolgd door "Registered 6 MQTT action(s).", "Connected" en "Subscribed".

@@ -16,9 +16,6 @@ namespace User.MQTTPlugin
 
         internal const int DefaultPort = 1883;
 
-        // Left over from the SimHub plugin template; removed in F5 (A5).
-        public int SpeedWarningLevel = 100;
-
         /// <summary>0 for a file that predates F4, so the user.config settings still need migrating.</summary>
         public int SettingsVersion { get; set; }
 
@@ -42,7 +39,6 @@ namespace User.MQTTPlugin
         {
             return new MQTTPluginSettings
             {
-                SpeedWarningLevel = SpeedWarningLevel,
                 SettingsVersion = SettingsVersion,
                 Server = Server,
                 Port = Port,

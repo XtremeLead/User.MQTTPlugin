@@ -71,6 +71,14 @@ namespace User.MQTTPlugin
             return !string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(topic) && !string.IsNullOrEmpty(message);
         }
 
+        /// <summary>
+        /// The name SimHub gives a plugin action: the plugin class name, a dot and the action name.
+        /// </summary>
+        internal static string SimHubActionName(string actionName)
+        {
+            return $"{nameof(MQTTPlugin)}.{actionName}";
+        }
+
         /// <summary>D6: why the actions were not saved.</summary>
         internal static string DuplicateActionsMessage(IList<string> duplicateNames)
         {

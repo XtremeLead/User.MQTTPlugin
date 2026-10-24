@@ -46,7 +46,8 @@ namespace User.MQTTPlugin.Tests
             Assert.AreEqual("toggle", result.Actions[1].Message);
         }
 
-        // The file as it is before F4: it must count as not migrated yet.
+        // The file as it is before F4: it must count as not migrated yet. Its template leftover
+        // SpeedWarningLevel is no longer in the model and is ignored (A5).
         [TestMethod]
         public void Json_FileFromBeforeF4_IsVersionZeroWithDefaults()
         {

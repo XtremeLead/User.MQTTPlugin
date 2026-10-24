@@ -38,7 +38,6 @@ namespace User.MQTTPlugin
             if (loaded.SettingsVersion < MQTTPluginSettings.CurrentVersion)
             {
                 MQTTPluginSettings migrated = SettingsMigration.FromLegacy(loadLegacy(), Log);
-                migrated.SpeedWarningLevel = loaded.SpeedWarningLevel;
                 try
                 {
                     settingsStore.Save(migrated);

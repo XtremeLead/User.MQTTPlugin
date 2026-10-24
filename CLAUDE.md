@@ -60,7 +60,7 @@ Unit tests are required. Use **MSTest**.
 
 ## Architecture
 
-- **`MQTTPlugin`** ([MQTTPlugin.cs](MQTTPlugin.cs)) is the SimHub entry point (`IPlugin`, `IDataPlugin`, `IWPFSettingsV2`). SimHub rebuilds plugins on every game change, so `Init`/`End` run many times per session. `MQTTPlugin.Instance` is a static pointer to the live instance, used only by the parameterless `SettingsControlV2` constructor. `DataUpdate` is intentionally empty, because data arrives from MQTT and not from the game loop.
+- **`MQTTPlugin`** ([MQTTPlugin.cs](MQTTPlugin.cs)) is the SimHub entry point (`IPlugin`, `IDataPlugin`, `IWPFSettingsV2`). SimHub rebuilds plugins on every game change, so `Init`/`End` run many times per session. `MQTTPlugin.Instance` is a static pointer to the live instance; the settings page uses it to re-register actions after "Save actions". The only SimHub property is `MQTTPlugin.MQTTMessage` (the template's `CurrentDateTime` was removed in F5). `DataUpdate` is intentionally empty, because data arrives from MQTT and not from the game loop.
 - **`MqttConnectionManager`** ([MqttConnectionManager.cs](MqttConnectionManager.cs)) owns the live connection (F2). There is one shared instance, `MqttConnectionManager.Shared` (D4).
   - `Init` subscribes to `MessageReceived` and calls `Start(this)`. That starts the 5s watchdog and connects in the background, so `Init` doesn't block (D5). `End` calls `Stop(this)` and unsubscribes. Start and Stop take the plugin as owner, so the `End` of an old instance can't stop the connection a newer instance started.
   - The client field is guarded by `sync`. Only one connect runs at a time (`connectGate`), and the blocking M2Mqtt `Connect` runs outside the lock. A connect that finishes after `Stop` is discarded.
@@ -80,6 +80,8 @@ Unit tests are required. Use **MSTest**.
   - The settings page only shows the actions. Its "Save actions" validates the rows with `ActionRules.Validate`: incomplete rows are skipped, and duplicate names (ignoring case) refuse the whole save (D6). It then saves them with `MQTTSettings.SaveActions` and calls `MQTTPlugin.Instance.RegisterActions`.
   - `IActionRegistry` is the test seam; `SimHubActionRegistry` is the real one.
 - **Settings UI**: `GetWPFSettingsControl` returns `SettingsControlV2`. The legacy `SettingsControl` was removed in F4 (D3).
+  - Handlers are named after their control (`btnTest_Click`, `btnSave_Click`, `btnSaveActions_Click`, `txtPort_KeyDown`). All connection fields share `ConnectionField_Changed`, which disables Save until a new successful Test.
+  - `CreateControlsEditor` builds the control-mapping editor below a saved action, and `SettingsViewLogic.SimHubActionName` gives its action name (`MQTTPlugin.<name>`).
   - The page scrolls itself with one `ScrollViewer`, because SimHub doesn't scroll plugin pages (B12). Don't add nested scroll areas, because they swallow the mouse wheel.
   - A triple click in any text or password field selects all its text. WPF's `ClickCount` doesn't reach 3 there, so `MultiClickCounter` counts the clicks itself.
 

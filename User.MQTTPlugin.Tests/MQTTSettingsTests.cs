@@ -66,7 +66,7 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void Initialize_NotMigratedYet_MigratesSavesAndUsesTheResult()
         {
-            var store = new FakePluginSettingsStore(new MQTTPluginSettings { SpeedWarningLevel = 80 });
+            var store = new FakePluginSettingsStore(new MQTTPluginSettings());
 
             MQTTSettings.Initialize(store, Legacy("mqttserver", "legacy.test", "mqttport", "1884", "mqtttopic", "home/#"));
 
@@ -75,7 +75,6 @@ namespace User.MQTTPlugin.Tests
             Assert.AreEqual(1, store.SaveCount);
             Assert.AreEqual(MQTTPluginSettings.CurrentVersion, store.Stored.SettingsVersion);
             Assert.AreEqual("legacy.test", store.Stored.Server);
-            Assert.AreEqual(80, store.Stored.SpeedWarningLevel, "values from the existing file are kept");
         }
 
         [TestMethod]

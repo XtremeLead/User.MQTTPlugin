@@ -140,6 +140,13 @@ namespace User.MQTTPlugin.Tests
             Assert.AreEqual(expected, SettingsViewLogic.IsCompleteAction(name, topic, message));
         }
 
+        // Existing control mappings refer to this name, so it must not change.
+        [TestMethod]
+        public void SimHubActionName_IsPluginClassDotActionName()
+        {
+            Assert.AreEqual("MQTTPlugin.AircoTurnOn", SettingsViewLogic.SimHubActionName("AircoTurnOn"));
+        }
+
         // D6
         [TestMethod]
         public void DuplicateActionsMessage_OneName()

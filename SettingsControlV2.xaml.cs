@@ -1,25 +1,23 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using SimHub.Plugins.UI;
 
 namespace User.MQTTPlugin
 {
     public partial class SettingsControlV2 : UserControl
     {
-        public MQTTPlugin Plugin { get; }
-
         private static readonly Brush PlaceholderBrush = Brushes.Gray;
 
-        public SettingsControlV2() : this(MQTTPlugin.Instance) { }
+        // The width the page has always given the control-mapping editor below an action.
+        private const double ControlsEditorWidth = (3 * 95) + (2 * 10);
 
-        public SettingsControlV2(MQTTPlugin plugin)
+        public SettingsControlV2()
         {
-            Plugin = plugin;
             InitializeComponent();
 
             MQTTPluginSettings settings = MQTTSettings.Current;
@@ -41,14 +39,9 @@ namespace User.MQTTPlugin
 
         // --- Connection section ---
 
-        // Any change to the connection fields needs a new successful Test before Save.
-        private void TextBox_TextChanged(object sender, TextChangedEventArgs e) => DisableSave();
-        private void TextBox_TextChanged_1(object sender, TextChangedEventArgs e) => DisableSave();
-        private void TextBox_TextChanged_2(object sender, TextChangedEventArgs e) => DisableSave();
-        private void PasswordBox_TextChanged_3(object sender, RoutedEventArgs e) => DisableSave();
-        private void TextBox_TextChanged_4(object sender, TextChangedEventArgs e) => DisableSave();
-
-        private void DisableSave()
+        // Any change to a connection field needs a new successful Test before Save. Used for the
+        // TextChanged of the text fields and the PasswordChanged of the password field.
+        private void ConnectionField_Changed(object sender, RoutedEventArgs e)
         {
             if (btnSave != null) btnSave.IsEnabled = false;
         }
@@ -66,7 +59,7 @@ namespace User.MQTTPlugin
             return new ConnectionSettings(txtBroker.Text, port, txtUser.Text, txtPassword.Password, txtTopic.Text, chkUseTls.IsChecked == true);
         }
 
-        private async void SHButtonPrimary_Click(object sender, RoutedEventArgs e)
+        private async void btnSave_Click(object sender, RoutedEventArgs e)
         {
             ConnectionSettings connection = ReadConnectionFields();
             if (connection == null)
@@ -92,7 +85,7 @@ namespace User.MQTTPlugin
             btnSave.IsEnabled = true;
         }
 
-        private async void SHButtonPrimary_Click_1(object sender, RoutedEventArgs e)
+        private async void btnTest_Click(object sender, RoutedEventArgs e)
         {
             ConnectionSettings testSettings = ReadConnectionFields();
             if (testSettings == null)
@@ -152,7 +145,7 @@ namespace User.MQTTPlugin
             e.Handled = !SettingsViewLogic.IsPortKey(e.Key);
         }
 
-        // --- Actions section (redesigned) ---
+        // --- Actions section ---
 
         private void btnAddAction_Click(object sender, RoutedEventArgs e)
         {
@@ -195,17 +188,23 @@ namespace User.MQTTPlugin
 
             if (withControlsEditor && !string.IsNullOrEmpty(name))
             {
-                SimHub.Plugins.UI.ControlsEditor controlsEditor = new SimHub.Plugins.UI.ControlsEditor
-                {
-                    Name = $"ControlsEditor{stackPanelActions.Children.Count}",
-                    FriendlyName = name,
-                    ActionName = $"MQTTPlugin.{name}",
-                    Width = (3 * 95) + (2 * 10),
-                    HorizontalAlignment = HorizontalAlignment.Left
-                };
+                ControlsEditor controlsEditor = CreateControlsEditor(name, stackPanelActions.Children.Count);
                 stackPanelActions.Children.Add(controlsEditor);
                 row.Tag = controlsEditor;
             }
+        }
+
+        /// <summary>The control-mapping editor shown below a saved action; the row keeps it in its Tag.</summary>
+        private static ControlsEditor CreateControlsEditor(string actionName, int index)
+        {
+            return new ControlsEditor
+            {
+                Name = $"ControlsEditor{index}",
+                FriendlyName = actionName,
+                ActionName = SettingsViewLogic.SimHubActionName(actionName),
+                Width = ControlsEditorWidth,
+                HorizontalAlignment = HorizontalAlignment.Left
+            };
         }
 
         private void DeleteActionRow(Grid row)
@@ -213,7 +212,7 @@ namespace User.MQTTPlugin
             int index = stackPanelActions.Children.IndexOf(row);
             if (index < 0) return;
 
-            SimHub.Plugins.UI.ControlsEditor editor = row.Tag as SimHub.Plugins.UI.ControlsEditor;
+            ControlsEditor editor = row.Tag as ControlsEditor;
             stackPanelActions.Children.Remove(row);
 
             if (editor != null)
@@ -289,22 +288,15 @@ namespace User.MQTTPlugin
                 Grid row = rows[rowIndex];
                 string name = texts[rowIndex].Item1;
 
-                if (row.Tag is SimHub.Plugins.UI.ControlsEditor existingEditor)
+                if (row.Tag is ControlsEditor existingEditor)
                 {
                     existingEditor.FriendlyName = name;
-                    existingEditor.ActionName = $"MQTTPlugin.{name}";
+                    existingEditor.ActionName = SettingsViewLogic.SimHubActionName(name);
                 }
                 else
                 {
                     int index = stackPanelActions.Children.IndexOf(row);
-                    SimHub.Plugins.UI.ControlsEditor controlsEditor = new SimHub.Plugins.UI.ControlsEditor
-                    {
-                        Name = $"ControlsEditor{index}",
-                        FriendlyName = name,
-                        ActionName = $"MQTTPlugin.{name}",
-                        Width = (3 * 95) + (2 * 10),
-                        HorizontalAlignment = HorizontalAlignment.Left
-                    };
+                    ControlsEditor controlsEditor = CreateControlsEditor(name, index);
                     stackPanelActions.Children.Insert(index + 1, controlsEditor);
                     row.Tag = controlsEditor;
                 }

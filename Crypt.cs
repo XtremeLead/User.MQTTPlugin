@@ -1,14 +1,14 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Security.Cryptography;
-
+using System.Text;
 
 namespace User.MQTTPlugin
 {
-    class Crypt
+    /// <summary>
+    /// Encrypts the MQTT password for storage with DPAPI, so only the current Windows user can
+    /// decrypt it.
+    /// </summary>
+    internal static class Crypt
     {
         private static readonly byte[] Entropy = Encoding.ASCII.GetBytes("O40LHbuR4e0p%uC(3vZQ2S_b5o^017A(");
 

@@ -82,7 +82,6 @@
     <Compile Include="MQTTSettings.cs" />
     <Compile Include="MultiClickCounter.cs" />
     <Compile Include="PluginServices.cs" />
-    <Compile Include="Settings.cs" />
     <Compile Include="SettingsRules.cs" />
     <Compile Include="SettingsStore.cs" />
     <Compile Include="SettingsViewLogic.cs" />

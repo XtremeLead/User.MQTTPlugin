@@ -58,14 +58,7 @@ namespace User.MQTTPlugin
         /// <param name="data">Current game data, including current and previous data frame.</param>
         public void DataUpdate(PluginManager pluginManager, ref GameData data)
         {
-            // Define the value of our property (declared in init)
-            if (data.GameRunning)
-            {
-                if (data.OldData != null && data.NewData != null)
-                {
-
-                }
-            }
+            // Intentionally empty: data arrives from MQTT, not from the game loop.
         }
 
         /// <summary>
@@ -93,7 +86,7 @@ namespace User.MQTTPlugin
         /// <returns></returns>
         public System.Windows.Controls.Control GetWPFSettingsControl(PluginManager pluginManager)
         {
-            return new SettingsControlV2(this);
+            return new SettingsControlV2();
         }
 
         /// <summary>
@@ -110,9 +103,7 @@ namespace User.MQTTPlugin
             // Load the settings from SimHub's storage; the first time, this migrates them from user.config (D1).
             MQTTSettings.Initialize(new SimHubSettingsStore(this), LegacySettings.Load);
 
-            // Declare a property available in the property list, this gets evaluated "on demand" (when shown or used in formulas)
-            this.AttachDelegate("CurrentDateTime", () => DateTime.Now);
-
+            // The property MQTTPlugin.MQTTMessage; SimHub reads it on demand (when shown or used in formulas).
             this.AttachDelegate("MQTTMessage", () => mqttMessage);
 
             // Register the saved actions now, so they work without opening the settings page (B4).
