@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for reporting a bug. Found a security problem? Don't report it here; follow [SECURITY.md](https://github.com/XtremeLead/User.MQTTPlugin/blob/master/SECURITY.md) instead.
+        Thanks for reporting a bug. Found a security problem? Don't report it here; follow [SECURITY.md](https://github.com/XtremeLead/SimHub-MQTT-Plugin/blob/master/SECURITY.md) instead.
   - type: textarea
     id: what-happened
     attributes:
