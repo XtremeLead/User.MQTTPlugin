@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-
 namespace User.MQTTPlugin
 {
     internal enum ConnectionSettingsProblem
@@ -10,7 +8,7 @@ namespace User.MQTTPlugin
     }
 
     /// <summary>
-    /// Everything needed to connect to a broker and subscribe.
+    /// Everything needed to connect to a broker and subscribe, with the password decrypted.
     /// </summary>
     internal sealed class ConnectionSettings
     {
@@ -32,29 +30,29 @@ namespace User.MQTTPlugin
         public bool UseTls { get; }
 
         /// <summary>
-        /// Builds the settings from MQTTSettings.LoadSettings() output, decrypting the password.
-        /// Returns null and the reason when there is no broker or the port isn't a number.
+        /// Builds the connection settings from the saved settings, decrypting the password.
+        /// Returns null and the reason when there is no broker or the port isn't valid.
         /// </summary>
-        internal static ConnectionSettings FromSettings(IDictionary<string, string> settings, out ConnectionSettingsProblem problem)
+        internal static ConnectionSettings FromSettings(MQTTPluginSettings settings, out ConnectionSettingsProblem problem)
         {
             if (!SettingsRules.HasBrokerConfigured(settings))
             {
                 problem = ConnectionSettingsProblem.NoBroker;
                 return null;
             }
-            if (!SettingsRules.TryParsePort(settings["mqttport"], out int port))
+            if (!SettingsRules.IsValidPort(settings.Port))
             {
                 problem = ConnectionSettingsProblem.InvalidPort;
                 return null;
             }
             problem = ConnectionSettingsProblem.None;
             return new ConnectionSettings(
-                settings["mqttserver"],
-                port,
-                settings["mqttuser"],
-                Crypt.UnprotectString(settings["mqttpass"]),
-                settings["mqtttopic"],
-                SettingsRules.IsTlsEnabled(settings));
+                settings.Server,
+                settings.Port,
+                settings.Username ?? "",
+                Crypt.UnprotectString(settings.EncryptedPassword),
+                settings.Topic ?? "",
+                settings.UseTls);
         }
     }
 }

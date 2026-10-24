@@ -41,6 +41,20 @@ namespace User.MQTTPlugin.Tests
             Assert.AreEqual("Successfully connected. Happy simracing!", SettingsViewLogic.ConnectionSuccessMessage);
             Assert.AreEqual("Successfully connected. Click Save to Save your settings and connect.", SettingsViewLogic.ConnectionTestSuccessMessage);
             Assert.AreEqual("Could not save the settings. Please check the SimHub log.", SettingsViewLogic.SaveFailedMessage);
+            Assert.AreEqual("Could not save the actions. Please check the SimHub log.", SettingsViewLogic.SaveActionsFailedMessage);
+            Assert.AreEqual("Invalid port.", SettingsViewLogic.InvalidPortMessage);
+        }
+
+        // --- PortText ---
+
+        [TestMethod]
+        [DataRow(1883, "1883", DisplayName = "valid port")]
+        [DataRow(65535, "65535", DisplayName = "highest port")]
+        [DataRow(0, "", DisplayName = "invalid migrated port shows empty")]
+        [DataRow(70000, "", DisplayName = "out of range shows empty")]
+        public void PortText_ShowsOnlyValidPorts(int port, string expected)
+        {
+            Assert.AreEqual(expected, SettingsViewLogic.PortText(port));
         }
 
         // --- PortAfterTlsChange ---

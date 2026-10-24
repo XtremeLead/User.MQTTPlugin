@@ -192,24 +192,21 @@ namespace User.MQTTPlugin.Tests
         private readonly object sync = new object();
         private readonly List<TimeSpan> delays = new List<TimeSpan>();
 
+        private MQTTPluginSettings settings = new MQTTPluginSettings
+        {
+            SettingsVersion = MQTTPluginSettings.CurrentVersion,
+            Server = "broker.test",
+            Port = 1883,
+            Topic = "home/#",
+        };
+
         public ManagerHarness()
         {
-            Settings = new Dictionary<string, string>
-            {
-                { "mqttserver", "broker.test" },
-                { "mqttport", "1883" },
-                { "mqttuser", "" },
-                { "mqttpass", "" },
-                { "mqtttopic", "home/#" },
-                { "mqtttls", "False" },
-                { "mqttactions", "" },
-                { "lastConnectionSuccessful", "False" },
-            };
             Manager = new MqttConnectionManager(
                 Factory,
                 Log,
                 Clock,
-                () => { lock (sync) return new Dictionary<string, string>(Settings); },
+                () => { lock (sync) return settings; },
                 (delay, token) => Delay(delay, token),
                 (interval, tick) =>
                 {
@@ -223,7 +220,6 @@ namespace User.MQTTPlugin.Tests
         public FakePluginLog Log { get; } = new FakePluginLog();
         public FakeClock Clock { get; } = new FakeClock();
         public FakeTimer Timer { get; private set; }
-        public Dictionary<string, string> Settings { get; }
 
         /// <summary>The backoff wait; by default it records the delay and returns at once.</summary>
         public Func<TimeSpan, CancellationToken, Task> DelayBehaviour { get; set; } = (delay, token) => Task.CompletedTask;
@@ -233,9 +229,15 @@ namespace User.MQTTPlugin.Tests
             get { lock (sync) return delays.Select(d => (int)d.TotalSeconds).ToList(); }
         }
 
-        public void SetSetting(string name, string value)
+        /// <summary>Changes the saved settings the way MQTTSettings does: on a copy that replaces them.</summary>
+        public void EditSettings(Action<MQTTPluginSettings> change)
         {
-            lock (sync) Settings[name] = value;
+            lock (sync)
+            {
+                MQTTPluginSettings next = settings.Clone();
+                change(next);
+                settings = next;
+            }
         }
 
         public FakeMqttClient LastClient => Factory.Created.Last();

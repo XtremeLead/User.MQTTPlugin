@@ -30,7 +30,7 @@ namespace User.MQTTPlugin.Tests
         private readonly FakePluginLog log = new FakePluginLog();
         private readonly List<string> published = new List<string>();
 
-        private void Register(Dictionary<string, ValueTuple<string, string>> actions)
+        private void Register(params MqttActionSetting[] actions)
         {
             ActionRegistration.Register(registry, actions, (topic, message) => published.Add(topic + "=" + message), log);
         }
@@ -39,11 +39,9 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void Register_ClearsFirstThenAddsEachActionInOrder()
         {
-            Register(new Dictionary<string, ValueTuple<string, string>>
-            {
-                { "Light", ("home/light", "on") },
-                { "Climate", ("home/climate", "toggle") },
-            });
+            Register(
+                new MqttActionSetting("Light", "home/light", "on"),
+                new MqttActionSetting("Climate", "home/climate", "toggle"));
 
             CollectionAssert.AreEqual(new[] { "clear", "add Light", "add Climate" }, registry.Calls);
             Assert.IsTrue(log.Contains("Info", "Registered 2 MQTT action(s)."));
@@ -52,21 +50,32 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void Register_RunningAnAction_PublishesItsMessageToItsTopic()
         {
-            Register(new Dictionary<string, ValueTuple<string, string>>
-            {
-                { "Light", ("home/light", "on") },
-                { "Climate", ("home/climate", "toggle") },
-            });
+            Register(
+                new MqttActionSetting("Light", "home/light", "on"),
+                new MqttActionSetting("Climate", "home/climate", "toggle"));
 
             registry.Actions["Climate"]();
 
             CollectionAssert.AreEqual(new[] { "home/climate=toggle" }, published);
         }
 
+        // The action keeps the topic and message it was registered with.
+        [TestMethod]
+        public void Register_LaterChangeToTheSetting_DoesNotChangeTheRegisteredAction()
+        {
+            var light = new MqttActionSetting("Light", "home/light", "on");
+            Register(light);
+
+            light.Message = "off";
+            registry.Actions["Light"]();
+
+            CollectionAssert.AreEqual(new[] { "home/light=on" }, published);
+        }
+
         [TestMethod]
         public void Register_NoActions_OnlyClears()
         {
-            Register(new Dictionary<string, ValueTuple<string, string>>());
+            Register();
 
             CollectionAssert.AreEqual(new[] { "clear" }, registry.Calls);
         }
@@ -74,49 +83,11 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void Register_Renamed_OldNameIsGone()
         {
-            Register(new Dictionary<string, ValueTuple<string, string>> { { "Old", ("t", "m") } });
+            Register(new MqttActionSetting("Old", "t", "m"));
 
-            Register(new Dictionary<string, ValueTuple<string, string>> { { "New", ("t", "m") } });
+            Register(new MqttActionSetting("New", "t", "m"));
 
             CollectionAssert.AreEqual(new[] { "New" }, registry.Actions.Keys.ToArray());
-        }
-
-        // --- LoadSaved ---
-
-        [TestMethod]
-        public void LoadSaved_StoredXml_ReturnsActions()
-        {
-            var saved = new Dictionary<string, ValueTuple<string, string>> { { "Light", ("home/light", "on") } };
-            var settings = new Dictionary<string, string> { { "mqttactions", ActionsSerializer.Serialize(saved) } };
-
-            Dictionary<string, ValueTuple<string, string>> actions = ActionRegistration.LoadSaved(settings, log);
-
-            Assert.AreEqual(("home/light", "on"), actions["Light"]);
-            Assert.AreEqual(0, log.Levels.Count);
-        }
-
-        [TestMethod]
-        public void LoadSaved_NoActionsSaved_ReturnsNoneWithoutLogging()
-        {
-            var settings = new Dictionary<string, string> { { "mqttactions", "" } };
-
-            Assert.AreEqual(0, ActionRegistration.LoadSaved(settings, log).Count);
-            Assert.AreEqual(0, log.Levels.Count);
-        }
-
-        [TestMethod]
-        public void LoadSaved_SettingMissing_ReturnsNone()
-        {
-            Assert.AreEqual(0, ActionRegistration.LoadSaved(new Dictionary<string, string>(), log).Count);
-        }
-
-        [TestMethod]
-        public void LoadSaved_UnreadableXml_ReturnsNoneAndLogsError()
-        {
-            var settings = new Dictionary<string, string> { { "mqttactions", "<not-closed>" } };
-
-            Assert.AreEqual(0, ActionRegistration.LoadSaved(settings, log).Count);
-            Assert.IsTrue(log.Contains("Error", "Could not load saved MQTT actions"));
         }
     }
 }

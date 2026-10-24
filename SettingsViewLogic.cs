@@ -14,6 +14,14 @@ namespace User.MQTTPlugin
         internal const string ConnectionSuccessMessage = "Successfully connected. Happy simracing!";
         internal const string ConnectionTestSuccessMessage = "Successfully connected. Click Save to Save your settings and connect.";
         internal const string SaveFailedMessage = "Could not save the settings. Please check the SimHub log.";
+        internal const string SaveActionsFailedMessage = "Could not save the actions. Please check the SimHub log.";
+        internal const string InvalidPortMessage = "Invalid port.";
+
+        /// <summary>The port as shown in the port field; empty for an invalid port (0).</summary>
+        internal static string PortText(int port)
+        {
+            return SettingsRules.IsValidPort(port) ? port.ToString(System.Globalization.CultureInfo.InvariantCulture) : "";
+        }
 
         /// <summary>
         /// The status shown when the settings page opens.

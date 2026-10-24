@@ -9,7 +9,7 @@ namespace User.MQTTPlugin
     /// </summary>
     internal sealed class ActionsValidation
     {
-        public ActionsValidation(Dictionary<string, ValueTuple<string, string>> actions, IList<int> savedRows, int skippedCount, IList<string> duplicateNames)
+        public ActionsValidation(List<MqttActionSetting> actions, IList<int> savedRows, int skippedCount, IList<string> duplicateNames)
         {
             Actions = actions;
             SavedRows = savedRows;
@@ -17,8 +17,8 @@ namespace User.MQTTPlugin
             DuplicateNames = duplicateNames;
         }
 
-        /// <summary>Action name to (topic, message), in row order.</summary>
-        public Dictionary<string, ValueTuple<string, string>> Actions { get; }
+        /// <summary>The actions, in row order.</summary>
+        public List<MqttActionSetting> Actions { get; }
 
         /// <summary>Indexes of the rows that became an action.</summary>
         public IList<int> SavedRows { get; }
@@ -40,7 +40,7 @@ namespace User.MQTTPlugin
         /// </summary>
         internal static ActionsValidation Validate(IList<ValueTuple<string, string, string>> rows)
         {
-            var actions = new Dictionary<string, ValueTuple<string, string>>();
+            var actions = new List<MqttActionSetting>();
             var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             var savedRows = new List<int>();
             var duplicates = new List<string>();
@@ -62,7 +62,7 @@ namespace User.MQTTPlugin
                     if (!duplicates.Contains(name, StringComparer.OrdinalIgnoreCase)) duplicates.Add(name);
                     continue;
                 }
-                actions[name] = (topic, message);
+                actions.Add(new MqttActionSetting(name, topic, message));
                 savedRows.Add(i);
             }
 

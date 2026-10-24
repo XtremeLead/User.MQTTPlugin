@@ -1,19 +1,22 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.Serialization;
+using System.Xml;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace User.MQTTPlugin.Tests
 {
     /// <summary>
-    /// Pins the XML format of the mqttactions setting. Existing user.config files contain this
-    /// format, so F3/F4 must keep reading it.
+    /// Pins the XML format of the mqttactions setting in user.config before F4. The migration
+    /// must keep reading it.
     /// </summary>
     [TestClass]
     public class ActionsSerializationTests
     {
-        private const string SingleActionXml =
+        /// <summary>Exactly what the plugin wrote to user.config for one action before F4.</summary>
+        internal const string SingleActionXml =
             "<ArrayOfKeyValueOfstringValueTupleOfstringstringU6ho3Bhd xmlns:i=\"http://www.w3.org/2001/XMLSchema-instance\" xmlns=\"http://schemas.microsoft.com/2003/10/Serialization/Arrays\">\r\n" +
             "  <KeyValueOfstringValueTupleOfstringstringU6ho3Bhd>\r\n" +
             "    <Key>ToggleClimate</Key>\r\n" +
@@ -24,12 +27,26 @@ namespace User.MQTTPlugin.Tests
             "  </KeyValueOfstringValueTupleOfstringstringU6ho3Bhd>\r\n" +
             "</ArrayOfKeyValueOfstringValueTupleOfstringstringU6ho3Bhd>";
 
+        /// <summary>Writes actions the way the plugin did before F4 (the removed SerializeDict).</summary>
+        internal static string LegacyXml(Dictionary<string, ValueTuple<string, string>> actions)
+        {
+            var serializer = new DataContractSerializer(actions.GetType());
+            using (var sw = new StringWriter())
+            using (var writer = new XmlTextWriter(sw))
+            {
+                writer.Formatting = Formatting.Indented;
+                serializer.WriteObject(writer, actions);
+                writer.Flush();
+                return sw.ToString();
+            }
+        }
+
         [TestMethod]
-        public void Serialize_SingleAction_ProducesIndentedDataContractXml()
+        public void LegacyXml_SingleAction_MatchesStoredFormat()
         {
             var actions = new Dictionary<string, ValueTuple<string, string>> { { "ToggleClimate", ("simhub/climate", "toggle") } };
 
-            Assert.AreEqual(SingleActionXml, ActionsSerializer.Serialize(actions));
+            Assert.AreEqual(SingleActionXml, LegacyXml(actions));
         }
 
         [TestMethod]
@@ -42,7 +59,7 @@ namespace User.MQTTPlugin.Tests
         }
 
         [TestMethod]
-        public void Serialize_ThenDeserialize_KeepsSpecialCharactersAndOrder()
+        public void Deserialize_SpecialCharacters_KeepsValuesAndOrder()
         {
             var actions = new Dictionary<string, ValueTuple<string, string>>
             {
@@ -51,7 +68,7 @@ namespace User.MQTTPlugin.Tests
                 { "Empty", ("", "") },
             };
 
-            Dictionary<string, ValueTuple<string, string>> result = ActionsSerializer.Deserialize(ActionsSerializer.Serialize(actions));
+            Dictionary<string, ValueTuple<string, string>> result = ActionsSerializer.Deserialize(LegacyXml(actions));
 
             CollectionAssert.AreEqual(actions.Keys.ToList(), result.Keys.ToList());
             foreach (var action in actions)
@@ -61,11 +78,9 @@ namespace User.MQTTPlugin.Tests
         }
 
         [TestMethod]
-        public void Serialize_ThenDeserialize_EmptyDictionary_ReturnsEmpty()
+        public void Deserialize_EmptyDictionary_ReturnsEmpty()
         {
-            var result = ActionsSerializer.Deserialize(ActionsSerializer.Serialize(new Dictionary<string, ValueTuple<string, string>>()));
-
-            Assert.AreEqual(0, result.Count);
+            Assert.AreEqual(0, ActionsSerializer.Deserialize(LegacyXml(new Dictionary<string, ValueTuple<string, string>>())).Count);
         }
 
         [TestMethod]
@@ -74,20 +89,10 @@ namespace User.MQTTPlugin.Tests
             Assert.ThrowsException<SerializationException>(() => ActionsSerializer.Deserialize("<not-closed>"));
         }
 
-        // LoadExistingActions skips an empty setting, so this path isn't reached from the UI.
         [TestMethod]
         public void Deserialize_EmptyString_ThrowsXmlException()
         {
-            Assert.ThrowsException<System.Xml.XmlException>(() => ActionsSerializer.Deserialize(""));
-        }
-
-        // The legacy SettingsControl keeps its own copy until F5 removes it (D3).
-        [TestMethod]
-        public void LegacyDeserializeDict_StoredXml_ReturnsSameActions()
-        {
-            var actions = (Dictionary<string, ValueTuple<string, string>>)SettingsControl.DeserializeDict(SingleActionXml, typeof(Dictionary<string, ValueTuple<string, string>>));
-
-            CollectionAssert.AreEqual(ActionsSerializer.Deserialize(SingleActionXml).ToList(), actions.ToList());
+            Assert.ThrowsException<XmlException>(() => ActionsSerializer.Deserialize(""));
         }
     }
 }

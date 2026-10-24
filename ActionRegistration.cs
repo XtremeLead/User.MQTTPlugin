@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using SimHub.Plugins;
 
 namespace User.MQTTPlugin
@@ -42,37 +43,17 @@ namespace User.MQTTPlugin
         /// Clears the registered actions and registers <paramref name="actions"/>; running one
         /// publishes its message to its topic.
         /// </summary>
-        internal static void Register(IActionRegistry registry, IDictionary<string, ValueTuple<string, string>> actions, Action<string, string> publish, IPluginLog log)
+        internal static void Register(IActionRegistry registry, IEnumerable<MqttActionSetting> actions, Action<string, string> publish, IPluginLog log)
         {
+            List<MqttActionSetting> toRegister = actions.ToList();
             registry.Clear();
-            foreach (KeyValuePair<string, ValueTuple<string, string>> action in actions)
+            foreach (MqttActionSetting action in toRegister)
             {
-                string topic = action.Value.Item1;
-                string message = action.Value.Item2;
-                registry.Add(action.Key, () => publish(topic, message));
+                string topic = action.Topic;
+                string message = action.Message;
+                registry.Add(action.Name, () => publish(topic, message));
             }
-            log.Info($"Registered {actions.Count} MQTT action(s).");
-        }
-
-        /// <summary>
-        /// Reads the saved actions from MQTTSettings.LoadSettings() output. Returns none when
-        /// there are none or they can't be read; the latter is logged as an error.
-        /// </summary>
-        internal static Dictionary<string, ValueTuple<string, string>> LoadSaved(IDictionary<string, string> settings, IPluginLog log)
-        {
-            if (!settings.TryGetValue("mqttactions", out string xml) || string.IsNullOrEmpty(xml))
-            {
-                return new Dictionary<string, ValueTuple<string, string>>();
-            }
-            try
-            {
-                return ActionsSerializer.Deserialize(xml);
-            }
-            catch (Exception e)
-            {
-                log.Error($"Could not load saved MQTT actions: {e.Message}");
-                return new Dictionary<string, ValueTuple<string, string>>();
-            }
+            log.Info($"Registered {toRegister.Count} MQTT action(s).");
         }
     }
 }

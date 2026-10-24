@@ -13,7 +13,7 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | F1. Snelle, veilige bugfixes | ✅ | 158 tests groen; B1, B2 en acties handmatig bevestigd in SimHub |
 | F2. Verbindingsbeheerder | ✅ | 186 tests groen; handmatig bevestigd in SimHub (opstarten, Test, Save met nieuw topic, gamewissel, acties, afsluiten) |
 | F3. Acties naar de plugin | ✅ | Tests groen; B4, B12 en acties (opstarten, koppelingen, dubbele namen, hernoemen, verwijderen) handmatig bevestigd in SimHub |
-| F4. Instellingenmodel en opslag | ⬜ | |
+| F4. Instellingenmodel en opslag | ✅ | 241 tests groen; migratie, opslaan en herstart handmatig bevestigd in SimHub |
 | F5. Opruimen en leesbaarheid | ⬜ | |
 | F6. Documentatie | ⬜ | |
 
@@ -25,7 +25,7 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | B2 | TLS-vinkje blokkeert het opslaan | F1 | ✅ (ook handmatig bevestigd in SimHub) |
 | B3 | Test verbreekt de live verbinding, Save past niet toe | F2 | ✅ (ook handmatig bevestigd in SimHub) |
 | B4 | Acties pas actief na openen van de instellingen | F3 | ✅ (ook handmatig bevestigd in SimHub) |
-| B5 | Instellingen weg na SimHub-update | F4 | ⬜ |
+| B5 | Instellingen weg na SimHub-update | F4 | ✅ (migratie handmatig bevestigd in SimHub) |
 | B6 | Race conditions rond de verbinding | F2 | ✅ |
 | B7 | "Please provide MQTT settings" wordt nooit getoond | F1 | ✅ |
 | B8 | `AttachDelegate` bij elk bericht | F1 | ✅ |
@@ -34,11 +34,11 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | B11 | JSON-payloads worden herschreven (tijdzone, decimalen) | F1 | ✅ |
 | B12 | Instellingenscherm: meldingen afgekapt, niet scrollbaar | F3 | ✅ (ook handmatig bevestigd in SimHub) |
 | A1 | Verbindingsbeheerder in plaats van statische toestand | F2 | ✅ |
-| A2 | Eén getypeerd instellingenmodel | F4 | ⬜ |
+| A2 | Eén getypeerd instellingenmodel | F4 | ✅ |
 | A3 | Acties bij de plugin | F3 | ✅ |
 | A4 | Berichtverwerking los van bijwerkingen | F1/F2 | ✅ |
-| A5 | Oude code en template-resten weg | F5 | ⬜ |
-| L1–L6 | Leesbaarheid | F1/F4/F5 | 🔄 L6 ✅ (F1, behalve het oude `SettingsControl`, dat in F5 verdwijnt) |
+| A5 | Oude code en template-resten weg | F5 | 🔄 oude `SettingsControl` al weg in F4 (D3); template-resten in F5 |
+| L1–L6 | Leesbaarheid | F1/F4/F5 | 🔄 L6 ✅ (F1), L2 ✅ (F4); L1, L3–L5 in F5 |
 | T1–T5 | Testbaarheid | F0b/F2 | ✅ T1 en T3 (F0b), T2, T4 en T5 (F2) |
 
 ## Beslissingen
@@ -50,9 +50,24 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | D4 | Gedeelde verbindingsbeheerder of één per plugininstantie? | Gedeeld (`MqttConnectionManager.Shared`), op advies | 2026-10-22 |
 | D5 | Moet `Init` wachten op de eerste verbinding? | Nee, de eerste verbinding gebeurt op de achtergrond | 2026-10-22 |
 | D6 | Dubbele actienamen? | Save weigeren met een melding; hoofd- en kleine letters tellen als dezelfde naam | 2026-10-23 |
-| D3 | Oude `SettingsControl` verwijderen? | Ja, in F5; `DeserializeDict` gaat in F3 naar de serializer-helper | 2026-10-21 |
+| D3 | Oude `SettingsControl` verwijderen? | Ja, in F5; `DeserializeDict` gaat in F3 naar de serializer-helper. Aangepast op 2026-10-24: verwijderen al in F4 | 2026-10-21 |
 
 ## Log
+
+- **2026-10-24:** F4 afgerond na een handmatige controle door de gebruiker.
+  - **Eerste start:** het log toont "Migrated MQTT settings from user.config: broker '172.16.4.10', 6 action(s).", gevolgd door "Registered 6 MQTT action(s).", "Connected" en "Subscribed".
+  - **JSON-bestand:** bevat `SettingsVersion` 1, de verbindingsgegevens, het versleutelde wachtwoord en de 6 acties. `SpeedWarningLevel` is behouden.
+  - **Gebruik:** de instellingenpagina, acties en dashboards werken. Een gewijzigd topic blijft na een herstart bewaard, zonder nieuwe migratie. "Save actions" werkt het bestand bij.
+  - **Bouwen:** de eerste Debug-build na het verwijderen van `SettingsControl.xaml` gaf de verwachte MC1000-fout; de tweede build slaagde.
+
+- **2026-10-24:** F4 gebouwd. Er zijn nu 241 tests, en drie runs na elkaar slaagden allemaal.
+  - **Getypeerd model (A2, L2):** `MQTTPluginSettings` heeft `Server`, `Port` (int), `Username`, `EncryptedPassword`, `Topic`, `UseTls`, `Actions` (een lijst van `MqttActionSetting`) en `SettingsVersion`.
+  - **Opslag (B5, T3):** via `IPluginSettingsStore`/`SimHubSettingsStore` (`ReadCommonSettings`/`SaveCommonSettings`) in `PluginsData\Common\MQTTPlugin.GeneralSettings.json` in de SimHub-map. Met reflectie vastgesteld: SimHub schrijft alleen bij een wijziging en bewaart oude versies in `_Backups`.
+  - **Migratie (D1):** bij `SettingsVersion` 0 leest `Initialize` eenmalig `user.config` (`LegacySettings`), zet die om met `SettingsMigration.FromLegacy` en slaat de instellingen op als versie 1. Een nieuwe gebruiker zonder `user.config` krijgt de standaardwaarden, met de Info-regel "No previous MQTT settings found". `user.config` wordt niet beschreven.
+  - **Opslaan:** `MQTTSettings` slaat elke wijziging direct op, op een kopie, en vervangt daarna pas `Current`. `End` slaat niets meer op. Het tussentijds onthouden per toets (`RememberSetting`) is weg: Save leest de velden direct. "Save actions" slaat op via `MQTTSettings.SaveActions`.
+  - **Nieuwe regel:** een poort moet tussen 1 en 65535 liggen, anders verschijnt "Invalid port.". Een ongeldige gemigreerde poort wordt 0.
+  - **Opgeruimd:** het oude `SettingsControl` is verwijderd, met akkoord van de gebruiker (D3 aangepast), net als `ISettingsStore` en `ActionsSerializer.Serialize`. `lastConnectionSuccessful` wordt niet meer gebruikt.
+  - **Bouwen:** na het verwijderen van `SettingsControl.xaml` gaf een incrementele build een WPF-fout MC1000. Een Rebuild lost dat op.
 
 - **2026-10-24:** Driedubbelklikken in alle velden door de gebruiker bevestigd in SimHub.
 

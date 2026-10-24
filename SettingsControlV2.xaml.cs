@@ -12,8 +12,6 @@ namespace User.MQTTPlugin
     public partial class SettingsControlV2 : UserControl
     {
         public MQTTPlugin Plugin { get; }
-        private IDictionary<string, string> settings = new Dictionary<string, string>();
-        private Dictionary<string, ValueTuple<string, string>> ActionsToStore = new Dictionary<string, ValueTuple<string, string>>();
 
         private static readonly Brush PlaceholderBrush = Brushes.Gray;
 
@@ -24,87 +22,68 @@ namespace User.MQTTPlugin
             Plugin = plugin;
             InitializeComponent();
 
-            settings = MQTTSettings.LoadSettings();
-            txtBroker.Text = settings["mqttserver"];
-            txtPort.Text = settings["mqttport"];
-            txtUser.Text = settings["mqttuser"];
-            txtTopic.Text = settings["mqtttopic"];
-            chkUseTls.IsChecked = SettingsRules.IsTlsEnabled(settings);
+            MQTTPluginSettings settings = MQTTSettings.Current;
+            txtBroker.Text = settings.Server;
+            txtPort.Text = SettingsViewLogic.PortText(settings.Port);
+            txtUser.Text = settings.Username;
+            txtTopic.Text = settings.Topic;
+            chkUseTls.IsChecked = settings.UseTls;
+            txtPassword.Password = Crypt.UnprotectString(settings.EncryptedPassword);
 
-            txtPassword.Password = Crypt.UnprotectString(settings["mqttpass"]);
-
-            LoadExistingActions();
+            foreach (MqttActionSetting action in settings.Actions)
+            {
+                AddRowToUi(action.Name, action.Topic, action.Message, withControlsEditor: true);
+            }
 
             ConnectionStatus.Text = SettingsViewLogic.InitialConnectionStatus(
                 SettingsRules.HasBrokerConfigured(settings), MqttConnectionManager.Shared.IsConnected);
         }
 
-        private void LoadExistingActions()
+        // --- Connection section ---
+
+        // Any change to the connection fields needs a new successful Test before Save.
+        private void TextBox_TextChanged(object sender, TextChangedEventArgs e) => DisableSave();
+        private void TextBox_TextChanged_1(object sender, TextChangedEventArgs e) => DisableSave();
+        private void TextBox_TextChanged_2(object sender, TextChangedEventArgs e) => DisableSave();
+        private void PasswordBox_TextChanged_3(object sender, RoutedEventArgs e) => DisableSave();
+        private void TextBox_TextChanged_4(object sender, TextChangedEventArgs e) => DisableSave();
+
+        private void DisableSave()
         {
-            if (string.IsNullOrEmpty(settings["mqttactions"])) return;
-
-            try
-            {
-                ActionsToStore = ActionsSerializer.Deserialize(settings["mqttactions"]);
-                foreach (var action in ActionsToStore)
-                {
-                    AddRowToUi(action.Key, action.Value.Item1, action.Value.Item2, withControlsEditor: true);
-                }
-            }
-            catch (Exception ex)
-            {
-                SimHub.Logging.Current.Error($"Could not parse MQTT Actions! {ex.Message}");
-                ActionsStatus.Text = "Could not load previously saved actions — check the log.";
-            }
+            if (btnSave != null) btnSave.IsEnabled = false;
         }
-
-        // --- Connection section (unchanged behavior from SettingsControl) ---
-
-        private void TextBox_TextChanged(object sender, TextChangedEventArgs e) => StoreInSettings("mqttserver", sender);
-        private void TextBox_TextChanged_1(object sender, TextChangedEventArgs e) => StoreInSettings("mqttport", sender);
-        private void TextBox_TextChanged_2(object sender, TextChangedEventArgs e) => StoreInSettings("mqttuser", sender);
-        private void PasswordBox_TextChanged_3(object sender, RoutedEventArgs e)
-        {
-            PasswordBox passwordBox = sender as PasswordBox;
-            if (passwordBox != null)
-            {
-                if (btnSave != null) btnSave.IsEnabled = false;
-                string encrypted = Crypt.ProtectString(passwordBox.Password);
-                MQTTSettings.RememberSetting("mqttpass", encrypted);
-            }
-        }
-        private void TextBox_TextChanged_4(object sender, TextChangedEventArgs e) => StoreInSettings("mqtttopic", sender);
 
         private void chkUseTls_Changed(object sender, RoutedEventArgs e)
         {
-            MQTTSettings.RememberSetting("mqtttls", chkUseTls.IsChecked == true ? "True" : "False");
             string port = SettingsViewLogic.PortAfterTlsChange(chkUseTls.IsChecked, txtPort.Text);
             if (port != txtPort.Text) txtPort.Text = port;
         }
 
-        private void StoreInSettings(string key, object sender)
+        /// <summary>The connection settings as entered, or null when the port isn't valid.</summary>
+        private ConnectionSettings ReadConnectionFields()
         {
-            if (btnSave != null) btnSave.IsEnabled = false;
-            TextBox textBox = sender as TextBox;
-            if (textBox != null)
-            {
-                string value = textBox.Text;
-                if (key == "mqttpass") value = Crypt.ProtectString(value);
-                MQTTSettings.RememberSetting(key, value);
-            }
+            if (!SettingsRules.TryParsePort(txtPort.Text, out int port)) return null;
+            return new ConnectionSettings(txtBroker.Text, port, txtUser.Text, txtPassword.Password, txtTopic.Text, chkUseTls.IsChecked == true);
         }
 
         private async void SHButtonPrimary_Click(object sender, RoutedEventArgs e)
         {
+            ConnectionSettings connection = ReadConnectionFields();
+            if (connection == null)
+            {
+                ConnectionStatus.Text = SettingsViewLogic.InvalidPortMessage;
+                return;
+            }
+
             btnSave.IsEnabled = false;
             ConnectionStatus.Text = "Connecting...";
             try
             {
-                await MQTTSettings.SaveSettingsAsync();
+                await MQTTSettings.SaveConnectionAsync(connection);
             }
             catch (Exception)
             {
-                // SaveSettingsAsync has logged the reason and discarded the staged values.
+                // MQTTSettings has logged the reason; the saved settings are unchanged.
                 ConnectionStatus.Text = SettingsViewLogic.SaveFailedMessage;
                 btnSave.IsEnabled = true;
                 return;
@@ -115,16 +94,16 @@ namespace User.MQTTPlugin
 
         private async void SHButtonPrimary_Click_1(object sender, RoutedEventArgs e)
         {
-            if (!SettingsRules.TryParsePort(txtPort.Text, out int port))
+            ConnectionSettings testSettings = ReadConnectionFields();
+            if (testSettings == null)
             {
-                ConnectionStatus.Text = "Invalid port.";
+                ConnectionStatus.Text = SettingsViewLogic.InvalidPortMessage;
                 return;
             }
 
             ConnectionStatus.Text = "Testing connection...";
             try
             {
-                var testSettings = new ConnectionSettings(txtBroker.Text, port, txtUser.Text, txtPassword.Password, txtTopic.Text, chkUseTls.IsChecked == true);
                 bool connectionSuccessful = await MqttConnectionManager.Shared.TestAsync(testSettings);
                 ConnectionStatus.Text = connectionSuccessful ? SettingsViewLogic.ConnectionTestSuccessMessage : SettingsViewLogic.ConnectionFailedMessage;
                 btnSave.IsEnabled = connectionSuccessful;
@@ -291,6 +270,20 @@ namespace User.MQTTPlugin
                 return;
             }
 
+            try
+            {
+                MQTTSettings.SaveActions(validation.Actions);
+            }
+            catch (Exception)
+            {
+                // MQTTSettings has logged the reason; the saved actions are unchanged.
+                ActionsStatus.Text = SettingsViewLogic.SaveActionsFailedMessage;
+                return;
+            }
+
+            // Register with the live plugin; this page may belong to an instance that has ended.
+            MQTTPlugin.Instance?.RegisterActions(MQTTSettings.Current.Actions);
+
             foreach (int rowIndex in validation.SavedRows)
             {
                 Grid row = rows[rowIndex];
@@ -317,14 +310,7 @@ namespace User.MQTTPlugin
                 }
             }
 
-            ActionsToStore = validation.Actions;
-            MQTTSettings.Store["mqttactions"] = ActionsSerializer.Serialize(ActionsToStore);
-            MQTTSettings.Store.Save();
-
-            // Register with the live plugin; this page may belong to an instance that has ended.
-            MQTTPlugin.Instance?.RegisterActions(ActionsToStore);
-
-            ActionsStatus.Text = SettingsViewLogic.ActionsSavedMessage(ActionsToStore.Count, validation.SkippedCount);
+            ActionsStatus.Text = SettingsViewLogic.ActionsSavedMessage(validation.Actions.Count, validation.SkippedCount);
         }
     }
 }

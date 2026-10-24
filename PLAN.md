@@ -173,4 +173,5 @@ Elke fase levert een werkende, bouwbare plugin op met MSTest-tests, zoals [CLAUD
 - **D6. Wat te doen met dubbele actienamen?**
   - **Besluit (2026-10-23):** Save weigeren en een melding tonen; er wordt dan niets opgeslagen. Hoofd- en kleine letters tellen als dezelfde naam.
 - **D3. Oude `SettingsControl` verwijderen?**
+  - **Aanpassing (2026-10-24):** op verzoek naar F4 gehaald, omdat het oude scherm voor het nieuwe instellingenmodel helemaal omgebouwd had moeten worden.
   - **Besluit (2026-10-21):** ja, in F5. Het scherm wordt nooit getoond, omdat `GetWPFSettingsControl` via een constante altijd V2 kiest. Bij laten staan zou het in F2–F4 telkens mee aangepast moeten worden. `DeserializeDict` verhuist in F3 naar de serializer-helper. Terughalen kan via git.

@@ -30,14 +30,14 @@ namespace User.MQTTPlugin
             new M2MqttClientFactory(),
             new SimHubLog(),
             new SystemClock(),
-            MQTTSettings.LoadSettings,
+            () => MQTTSettings.Current,
             Task.Delay,
             StartSystemTimer);
 
         private readonly IMqttClientFactory factory;
         private readonly IPluginLog log;
         private readonly IClock clock;
-        private readonly Func<IDictionary<string, string>> loadSettings;
+        private readonly Func<MQTTPluginSettings> loadSettings;
         private readonly Func<TimeSpan, CancellationToken, Task> delay;
         private readonly Func<TimeSpan, Action, IDisposable> startTimer;
 
@@ -54,7 +54,7 @@ namespace User.MQTTPlugin
             IMqttClientFactory factory,
             IPluginLog log,
             IClock clock,
-            Func<IDictionary<string, string>> loadSettings,
+            Func<MQTTPluginSettings> loadSettings,
             Func<TimeSpan, CancellationToken, Task> delay,
             Func<TimeSpan, Action, IDisposable> startTimer)
         {
@@ -322,7 +322,7 @@ namespace User.MQTTPlugin
                 }
                 DisconnectQuietly(oldClient, "to apply new settings");
 
-                IDictionary<string, string> savedSettings = loadSettings();
+                MQTTPluginSettings savedSettings = loadSettings();
                 ConnectionSettings settings = ConnectionSettings.FromSettings(savedSettings, out ConnectionSettingsProblem problem);
                 if (problem == ConnectionSettingsProblem.NoBroker)
                 {
@@ -331,7 +331,7 @@ namespace User.MQTTPlugin
                 }
                 if (problem == ConnectionSettingsProblem.InvalidPort)
                 {
-                    log.Warn($"Invalid or missing MQTT port '{savedSettings["mqttport"]}'. Aborting connect.");
+                    log.Warn($"Invalid MQTT port {savedSettings.Port}. Aborting connect.");
                     return;
                 }
 

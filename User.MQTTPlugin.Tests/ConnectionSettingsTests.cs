@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
 namespace User.MQTTPlugin.Tests
@@ -6,16 +5,16 @@ namespace User.MQTTPlugin.Tests
     [TestClass]
     public class ConnectionSettingsTests
     {
-        private static Dictionary<string, string> Saved()
+        private static MQTTPluginSettings Saved()
         {
-            return new Dictionary<string, string>
+            return new MQTTPluginSettings
             {
-                { "mqttserver", "broker.test" },
-                { "mqttport", "8883" },
-                { "mqttuser", "user" },
-                { "mqttpass", Crypt.ProtectString("secret") },
-                { "mqtttopic", "home/#" },
-                { "mqtttls", "True" },
+                Server = "broker.test",
+                Port = 8883,
+                Username = "user",
+                EncryptedPassword = Crypt.ProtectString("secret"),
+                Topic = "home/#",
+                UseTls = true,
             };
         }
 
@@ -36,20 +35,20 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void FromSettings_NoBroker_ReturnsNullWithNoBroker()
         {
-            var saved = Saved();
-            saved["mqttserver"] = "";
+            MQTTPluginSettings saved = Saved();
+            saved.Server = "";
 
             Assert.IsNull(ConnectionSettings.FromSettings(saved, out ConnectionSettingsProblem problem));
             Assert.AreEqual(ConnectionSettingsProblem.NoBroker, problem);
         }
 
-        // The broker is checked first: without one, an empty port is not worth a warning.
+        // The broker is checked first: without one, an invalid port is not worth a warning.
         [TestMethod]
-        public void FromSettings_NoBrokerAndNoPort_ReportsNoBroker()
+        public void FromSettings_NoBrokerAndInvalidPort_ReportsNoBroker()
         {
-            var saved = Saved();
-            saved["mqttserver"] = "";
-            saved["mqttport"] = "";
+            MQTTPluginSettings saved = Saved();
+            saved.Server = "";
+            saved.Port = 0;
 
             ConnectionSettings.FromSettings(saved, out ConnectionSettingsProblem problem);
 
@@ -57,10 +56,12 @@ namespace User.MQTTPlugin.Tests
         }
 
         [TestMethod]
-        public void FromSettings_InvalidPort_ReturnsNullWithInvalidPort()
+        [DataRow(0, DisplayName = "0 (an invalid migrated port)")]
+        [DataRow(70000, DisplayName = "above 65535")]
+        public void FromSettings_InvalidPort_ReturnsNullWithInvalidPort(int port)
         {
-            var saved = Saved();
-            saved["mqttport"] = "abc";
+            MQTTPluginSettings saved = Saved();
+            saved.Port = port;
 
             Assert.IsNull(ConnectionSettings.FromSettings(saved, out ConnectionSettingsProblem problem));
             Assert.AreEqual(ConnectionSettingsProblem.InvalidPort, problem);
@@ -69,10 +70,23 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void FromSettings_NoPassword_ReturnsEmptyPassword()
         {
-            var saved = Saved();
-            saved["mqttpass"] = "";
+            MQTTPluginSettings saved = Saved();
+            saved.EncryptedPassword = "";
 
             Assert.AreEqual("", ConnectionSettings.FromSettings(saved, out ConnectionSettingsProblem _).Password);
+        }
+
+        [TestMethod]
+        public void FromSettings_NullTexts_BecomeEmpty()
+        {
+            MQTTPluginSettings saved = Saved();
+            saved.Username = null;
+            saved.Topic = null;
+
+            ConnectionSettings settings = ConnectionSettings.FromSettings(saved, out ConnectionSettingsProblem _);
+
+            Assert.AreEqual("", settings.Username);
+            Assert.AreEqual("", settings.Topic);
         }
     }
 }

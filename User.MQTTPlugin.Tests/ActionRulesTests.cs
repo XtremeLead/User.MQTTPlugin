@@ -25,8 +25,9 @@ namespace User.MQTTPlugin.Tests
                 "Zeta", "a/z", "1",
                 "Alpha", "a/a", "2");
 
-            CollectionAssert.AreEqual(new[] { "Zeta", "Alpha" }, result.Actions.Keys.ToArray());
-            Assert.AreEqual(("a/a", "2"), result.Actions["Alpha"]);
+            CollectionAssert.AreEqual(new[] { "Zeta", "Alpha" }, result.Actions.Select(a => a.Name).ToArray());
+            Assert.AreEqual("a/a", result.Actions[1].Topic);
+            Assert.AreEqual("2", result.Actions[1].Message);
             CollectionAssert.AreEqual(new[] { 0, 1 }, result.SavedRows.ToArray());
             Assert.AreEqual(0, result.SkippedCount);
             Assert.IsFalse(result.HasDuplicates);
@@ -40,7 +41,7 @@ namespace User.MQTTPlugin.Tests
                 "Light", "a/l", "on",
                 "NoMessage", "a/m", "");
 
-            CollectionAssert.AreEqual(new[] { "Light" }, result.Actions.Keys.ToArray());
+            CollectionAssert.AreEqual(new[] { "Light" }, result.Actions.Select(a => a.Name).ToArray());
             CollectionAssert.AreEqual(new[] { 1 }, result.SavedRows.ToArray());
             Assert.AreEqual(2, result.SkippedCount);
         }
@@ -100,7 +101,8 @@ namespace User.MQTTPlugin.Tests
                 "Light", "a/2", "off");
 
             Assert.IsFalse(result.HasDuplicates);
-            Assert.AreEqual(("a/2", "off"), result.Actions["Light"]);
+            Assert.AreEqual("a/2", result.Actions.Single().Topic);
+            Assert.AreEqual("off", result.Actions.Single().Message);
             Assert.AreEqual(1, result.SkippedCount);
         }
 

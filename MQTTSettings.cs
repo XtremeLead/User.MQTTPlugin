@@ -1,71 +1,108 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace User.MQTTPlugin
 {
-    class MQTTSettings
+    /// <summary>
+    /// Holds the current settings and saves changes (F4). MQTTPlugin.Init loads them through
+    /// Initialize; the settings page saves through SaveConnectionAsync and SaveActions.
+    ///
+    /// Current is replaced, never changed: every save works on a copy, writes it to the store and
+    /// only then makes it Current. So readers on other threads (the connection watchdog) always
+    /// see a complete set, and a failed save leaves Current as it is on disk.
+    /// </summary>
+    internal static class MQTTSettings
     {
-        private static IDictionary<string, string> SETTINGS = new Dictionary<string, string>();
+        private static readonly object sync = new object();
+        private static volatile MQTTPluginSettings current = new MQTTPluginSettings();
+        private static IPluginSettingsStore store;
 
-        // Where the settings live, and what happens after saving. Tests replace both.
-        internal static ISettingsStore Store = new PropertiesSettingsStore();
+        // What happens after saving the connection, and where messages go. Tests replace both.
         internal static Func<Task> Reconnect = MqttConnectionManager.ReconnectSharedAsync;
+        internal static IPluginLog Log = new SimHubLog();
 
-        public static IDictionary<string, string> LoadSettings()
+        /// <summary>The current settings. Don't change them; use the save methods.</summary>
+        public static MQTTPluginSettings Current => current;
+
+        /// <summary>
+        /// Loads the settings. The first time (SettingsVersion 0) it migrates the settings from
+        /// <paramref name="loadLegacy"/> and saves them (D1); after that user.config is never read.
+        /// </summary>
+        internal static void Initialize(IPluginSettingsStore settingsStore, Func<IDictionary<string, string>> loadLegacy)
         {
-            IDictionary<string, string> settings = new Dictionary<string, string>();
+            MQTTPluginSettings loaded = settingsStore.Load() ?? new MQTTPluginSettings();
+            if (loaded.Actions == null) loaded.Actions = new List<MqttActionSetting>();
 
-            foreach (string name in Store.Names)
+            if (loaded.SettingsVersion < MQTTPluginSettings.CurrentVersion)
             {
-                settings.Add(name, Store[name].ToString());
+                MQTTPluginSettings migrated = SettingsMigration.FromLegacy(loadLegacy(), Log);
+                migrated.SpeedWarningLevel = loaded.SpeedWarningLevel;
+                try
+                {
+                    settingsStore.Save(migrated);
+                }
+                catch (Exception e)
+                {
+                    // Use them anyway; the migration runs again on the next start.
+                    Log.Error($"Could not save the migrated MQTT settings: {e.Message}");
+                }
+                loaded = migrated;
             }
-            return settings;
-        }
 
-        public static void RememberSetting(string key, string value)
-        {
-            SETTINGS[key] = value;
-        }
-
-        public string GetSetting(string key)
-        {
-            return Store[key].ToString();
+            lock (sync)
+            {
+                store = settingsStore;
+                current = loaded;
+            }
         }
 
         /// <summary>
-        /// Writes the staged settings, saves them and reconnects. Each staged text is converted
-        /// to the type of its setting (for example "True" for the bool mqtttls) before anything
-        /// is written. If one can't be converted, nothing is written, the staged values are
-        /// discarded and the exception is rethrown.
+        /// Saves the connection settings from the settings page, with the password encrypted,
+        /// and reconnects with them.
         /// </summary>
-        public static Task SaveSettingsAsync()
+        public static Task SaveConnectionAsync(ConnectionSettings connection)
         {
-            Dictionary<string, object> converted = new Dictionary<string, object>();
-            try
+            Update(settings =>
             {
-                foreach (KeyValuePair<string, string> item in SETTINGS)
-                {
-                    Type settingType = Store[item.Key].GetType();
-                    converted[item.Key] = Convert.ChangeType(item.Value, settingType, CultureInfo.InvariantCulture);
-                }
-            }
-            catch (Exception e)
-            {
-                SETTINGS.Clear();
-                SimHub.Logging.Current.Error($"Could not save MQTT settings: {e.Message}");
-                throw;
-            }
-
-            foreach (KeyValuePair<string, object> item in converted)
-            {
-                Store[item.Key] = item.Value;
-            }
-            Store.Save();
-
-            // Settings have been tested, so connect
+                settings.Server = connection.Broker;
+                settings.Port = connection.Port;
+                settings.Username = connection.Username;
+                settings.EncryptedPassword = Crypt.ProtectString(connection.Password);
+                settings.Topic = connection.Topic;
+                settings.UseTls = connection.UseTls;
+            });
             return Reconnect();
+        }
+
+        public static void SaveActions(IEnumerable<MqttActionSetting> actions)
+        {
+            List<MqttActionSetting> copy = actions.Select(a => a.Clone()).ToList();
+            Update(settings => settings.Actions = copy);
+        }
+
+        private static void Update(Action<MQTTPluginSettings> change)
+        {
+            lock (sync)
+            {
+                if (store == null)
+                {
+                    throw new InvalidOperationException("The MQTT settings haven't been loaded yet.");
+                }
+                MQTTPluginSettings next = current.Clone();
+                change(next);
+                try
+                {
+                    store.Save(next);
+                }
+                catch (Exception e)
+                {
+                    Log.Error($"Could not save MQTT settings: {e.Message}");
+                    throw;
+                }
+                current = next;
+            }
         }
     }
 }

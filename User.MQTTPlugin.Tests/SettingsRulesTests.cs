@@ -6,52 +6,34 @@ namespace User.MQTTPlugin.Tests
     [TestClass]
     public class SettingsRulesTests
     {
-        private static Dictionary<string, string> Settings(params string[] keyValues)
-        {
-            var settings = new Dictionary<string, string>();
-            for (int i = 0; i < keyValues.Length; i += 2)
-            {
-                settings[keyValues[i]] = keyValues[i + 1];
-            }
-            return settings;
-        }
-
-        // B7: a fresh install has mqtttls "False" and lastConnectionSuccessful "False", but no
-        // broker, so it has no settings.
+        // B7: a fresh install has a port and TLS off, but no broker, so it has no settings.
         [TestMethod]
         public void HasBrokerConfigured_FreshInstall_ReturnsFalse()
         {
-            var fresh = new FakeSettingsStore();
-            var settings = new Dictionary<string, string>();
-            foreach (string name in fresh.Names) settings[name] = fresh[name].ToString();
-
-            Assert.IsFalse(SettingsRules.HasBrokerConfigured(settings));
+            Assert.IsFalse(SettingsRules.HasBrokerConfigured(new MQTTPluginSettings()));
         }
 
         [TestMethod]
         public void HasBrokerConfigured_BrokerSet_ReturnsTrue()
         {
-            Assert.IsTrue(SettingsRules.HasBrokerConfigured(Settings("mqttserver", "broker.example")));
+            Assert.IsTrue(SettingsRules.HasBrokerConfigured(new MQTTPluginSettings { Server = "broker.example" }));
         }
 
         [TestMethod]
         public void HasBrokerConfigured_OtherSettingsWithoutBroker_ReturnsFalse()
         {
-            var settings = Settings(
-                "mqttserver", "",
-                "mqttport", "1883",
-                "mqtttopic", "home/#",
-                "mqtttls", "True");
+            var settings = new MQTTPluginSettings { Server = "", Port = 1883, Topic = "home/#", UseTls = true };
 
             Assert.IsFalse(SettingsRules.HasBrokerConfigured(settings));
         }
 
         [TestMethod]
-        public void HasBrokerConfigured_MissingKey_ReturnsFalse()
+        public void HasBrokerConfigured_NullServer_ReturnsFalse()
         {
-            Assert.IsFalse(SettingsRules.HasBrokerConfigured(Settings()));
+            Assert.IsFalse(SettingsRules.HasBrokerConfigured(new MQTTPluginSettings { Server = null }));
         }
 
+        // The TLS flag in user.config before F4, read by the migration.
         [TestMethod]
         [DataRow("True", true, DisplayName = "True")]
         [DataRow("False", false, DisplayName = "False")]
@@ -59,26 +41,37 @@ namespace User.MQTTPlugin.Tests
         [DataRow("", false, DisplayName = "empty")]
         public void IsTlsEnabled_ComparesExactText(string value, bool expected)
         {
-            Assert.AreEqual(expected, SettingsRules.IsTlsEnabled(Settings("mqtttls", value)));
+            Assert.AreEqual(expected, SettingsRules.IsTlsEnabled(new Dictionary<string, string> { { "mqtttls", value } }));
         }
 
         [TestMethod]
         public void IsTlsEnabled_MissingSetting_ReturnsFalse()
         {
-            Assert.IsFalse(SettingsRules.IsTlsEnabled(Settings()));
+            Assert.IsFalse(SettingsRules.IsTlsEnabled(new Dictionary<string, string>()));
         }
 
-        // There is no range check: anything int.TryParse accepts passes.
+        [TestMethod]
+        [DataRow(1, true, DisplayName = "lowest port")]
+        [DataRow(65535, true, DisplayName = "highest port")]
+        [DataRow(0, false, DisplayName = "zero")]
+        [DataRow(65536, false, DisplayName = "above 65535")]
+        [DataRow(-1, false, DisplayName = "negative")]
+        public void IsValidPort_AcceptsOneTo65535(int port, bool expected)
+        {
+            Assert.AreEqual(expected, SettingsRules.IsValidPort(port));
+        }
+
         [TestMethod]
         [DataRow("1883", true, 1883, DisplayName = "normal port")]
         [DataRow(" 8883 ", true, 8883, DisplayName = "surrounding spaces")]
-        [DataRow("0", true, 0, DisplayName = "zero")]
-        [DataRow("-1", true, -1, DisplayName = "negative")]
-        [DataRow("70000", true, 70000, DisplayName = "above 65535")]
+        [DataRow("65535", true, 65535, DisplayName = "highest port")]
+        [DataRow("0", false, 0, DisplayName = "zero")]
+        [DataRow("-1", false, 0, DisplayName = "negative")]
+        [DataRow("70000", false, 0, DisplayName = "above 65535")]
         [DataRow("", false, 0, DisplayName = "empty")]
         [DataRow("abc", false, 0, DisplayName = "letters")]
         [DataRow("99999999999", false, 0, DisplayName = "overflow")]
-        public void TryParsePort_AcceptsWhatIntTryParseAccepts(string text, bool expectedOk, int expectedPort)
+        public void TryParsePort_AcceptsOnlyValidPorts(string text, bool expectedOk, int expectedPort)
         {
             bool ok = SettingsRules.TryParsePort(text, out int port);
 

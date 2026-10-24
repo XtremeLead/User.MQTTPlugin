@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Configuration;
+using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
@@ -9,159 +10,249 @@ namespace User.MQTTPlugin.Tests
     [TestClass]
     public class MQTTSettingsTests
     {
+        private int legacyReads;
+
         [TestInitialize]
         public void Initialize() => TestState.Reset();
 
         [TestCleanup]
         public void Cleanup() => TestState.Reset();
 
-        [TestMethod]
-        public void Store_ByDefault_IsPropertiesSettings()
+        private Func<IDictionary<string, string>> Legacy(params string[] keyValues)
         {
-            Assert.IsInstanceOfType(TestState.OriginalStore, typeof(PropertiesSettingsStore));
+            return () =>
+            {
+                legacyReads++;
+                var settings = new Dictionary<string, string>();
+                for (int i = 0; i < keyValues.Length; i += 2) settings[keyValues[i]] = keyValues[i + 1];
+                return settings;
+            };
+        }
+
+        private static ConnectionSettings Connection(string broker = "broker.test", string password = "secret")
+        {
+            return new ConnectionSettings(broker, 8883, "user", password, "home/#", true);
         }
 
         [TestMethod]
         public void Reconnect_ByDefault_ReconnectsTheSharedManager()
         {
             Assert.AreEqual(
-                typeof(MqttConnectionManager).GetMethod("ReconnectSharedAsync", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static),
+                typeof(MqttConnectionManager).GetMethod("ReconnectSharedAsync", BindingFlags.NonPublic | BindingFlags.Static),
                 TestState.OriginalReconnect.Method);
         }
 
         [TestMethod]
-        public void LoadSettings_ReturnsEverySettingAsString()
+        public void Log_ByDefault_IsSimHubLog()
         {
-            IDictionary<string, string> settings = MQTTSettings.LoadSettings();
+            Assert.IsInstanceOfType(TestState.OriginalLog, typeof(SimHubLog));
+        }
 
-            Assert.AreEqual(8, settings.Count);
-            Assert.AreEqual("", settings["mqttserver"]);
-            Assert.AreEqual("False", settings["mqtttls"]);
-            Assert.AreEqual("False", settings["lastConnectionSuccessful"]);
+        // --- Initialize and the one-time migration (D1) ---
+
+        [TestMethod]
+        public void Initialize_AlreadyMigrated_UsesStoredSettingsWithoutReadingUserConfig()
+        {
+            var store = new FakePluginSettingsStore(new MQTTPluginSettings { SettingsVersion = 1, Server = "stored.test" });
+
+            MQTTSettings.Initialize(store, Legacy("mqttserver", "legacy.test"));
+
+            Assert.AreEqual("stored.test", MQTTSettings.Current.Server);
+            Assert.AreEqual(0, legacyReads);
+            Assert.AreEqual(0, store.SaveCount);
+        }
+
+        // B5: the settings from user.config move to SimHub's storage once.
+        [TestMethod]
+        public void Initialize_NotMigratedYet_MigratesSavesAndUsesTheResult()
+        {
+            var store = new FakePluginSettingsStore(new MQTTPluginSettings { SpeedWarningLevel = 80 });
+
+            MQTTSettings.Initialize(store, Legacy("mqttserver", "legacy.test", "mqttport", "1884", "mqtttopic", "home/#"));
+
+            Assert.AreEqual("legacy.test", MQTTSettings.Current.Server);
+            Assert.AreEqual(1884, MQTTSettings.Current.Port);
+            Assert.AreEqual(1, store.SaveCount);
+            Assert.AreEqual(MQTTPluginSettings.CurrentVersion, store.Stored.SettingsVersion);
+            Assert.AreEqual("legacy.test", store.Stored.Server);
+            Assert.AreEqual(80, store.Stored.SpeedWarningLevel, "values from the existing file are kept");
         }
 
         [TestMethod]
-        public void LoadSettings_BooleanSettingTrue_ReturnsTrueText()
+        public void Initialize_AfterMigration_DoesNotReadUserConfigAgain()
         {
-            TestState.Store["mqtttls"] = true;
+            var store = new FakePluginSettingsStore(new MQTTPluginSettings());
+            MQTTSettings.Initialize(store, Legacy("mqttserver", "legacy.test"));
 
-            Assert.AreEqual("True", MQTTSettings.LoadSettings()["mqtttls"]);
+            MQTTSettings.Initialize(store, Legacy("mqttserver", "changed.test"));
+
+            Assert.AreEqual(1, legacyReads);
+            Assert.AreEqual("legacy.test", MQTTSettings.Current.Server);
+            Assert.AreEqual(1, store.SaveCount);
+        }
+
+        // A new user has no user.config: .NET then returns the defaults, so nothing is taken over.
+        [TestMethod]
+        public void Initialize_NewUserWithoutUserConfig_SavesDefaultsAsMigrated()
+        {
+            var store = new FakePluginSettingsStore(new MQTTPluginSettings());
+
+            MQTTSettings.Initialize(store, Legacy(
+                "mqttserver", "", "mqttport", "", "mqttuser", "", "mqttpass", "",
+                "mqtttopic", "", "mqtttls", "False", "mqttactions", "", "lastConnectionSuccessful", "False"));
+
+            Assert.AreEqual("", MQTTSettings.Current.Server);
+            Assert.AreEqual(1883, MQTTSettings.Current.Port);
+            Assert.AreEqual(0, MQTTSettings.Current.Actions.Count);
+            Assert.AreEqual(MQTTPluginSettings.CurrentVersion, store.Stored.SettingsVersion);
+            Assert.IsTrue(TestState.Log.Contains("Info", "No previous MQTT settings found; starting with defaults."));
+            Assert.AreEqual(0, TestState.Log.At("Error").Count);
         }
 
         [TestMethod]
-        public void LoadSettings_StringSetting_ReturnsValue()
+        public void Initialize_StoreReturnsNothing_MigratesLikeANewFile()
         {
-            TestState.Store["mqttserver"] = "broker.example";
+            var store = new FakePluginSettingsStore(null);
 
-            Assert.AreEqual("broker.example", MQTTSettings.LoadSettings()["mqttserver"]);
+            MQTTSettings.Initialize(store, Legacy("mqttserver", "legacy.test"));
+
+            Assert.AreEqual("legacy.test", MQTTSettings.Current.Server);
+            Assert.AreEqual(1, store.SaveCount);
         }
 
         [TestMethod]
-        public void GetSetting_ReturnsValueAsString()
+        public void Initialize_StoredActionsNull_BecomeEmpty()
         {
-            TestState.Store["mqttport"] = "1883";
+            var store = new FakePluginSettingsStore(new MQTTPluginSettings { SettingsVersion = 1, Actions = null });
 
-            Assert.AreEqual("1883", new MQTTSettings().GetSetting("mqttport"));
-            Assert.AreEqual("False", new MQTTSettings().GetSetting("mqtttls"));
+            MQTTSettings.Initialize(store, TestState.NoLegacySettings);
+
+            Assert.IsNotNull(MQTTSettings.Current.Actions);
+            Assert.AreEqual(0, MQTTSettings.Current.Actions.Count);
         }
 
         [TestMethod]
-        public void RememberSetting_DoesNotChangeSettingsBeforeSave()
+        public void Initialize_SavingMigrationFails_LogsErrorAndStillUsesMigratedSettings()
         {
-            MQTTSettings.RememberSetting("mqttserver", "broker.example");
+            var store = new FakePluginSettingsStore(new MQTTPluginSettings()) { SaveException = new UnauthorizedAccessException("read-only") };
 
-            Assert.AreEqual("", MQTTSettings.LoadSettings()["mqttserver"]);
-            Assert.AreEqual(0, TestState.Store.SaveCount);
+            MQTTSettings.Initialize(store, Legacy("mqttserver", "legacy.test"));
+
+            Assert.AreEqual("legacy.test", MQTTSettings.Current.Server);
+            Assert.IsTrue(TestState.Log.Contains("Error", "Could not save the migrated MQTT settings: read-only"));
         }
 
+        // --- SaveConnectionAsync ---
+
         [TestMethod]
-        public void SaveSettingsAsync_StagedStrings_WritesSavesOnceThenReconnects()
+        public void SaveConnectionAsync_StoresFieldsWithEncryptedPasswordThenReconnects()
         {
             var steps = new List<string>();
-            var reconnectTask = new TaskCompletionSource<bool>().Task;
+            var reconnect = new TaskCompletionSource<bool>().Task;
             MQTTSettings.Reconnect = () =>
             {
                 steps.Add("reconnect after " + TestState.Store.SaveCount + " save(s)");
-                return reconnectTask;
+                return reconnect;
             };
-            MQTTSettings.RememberSetting("mqttserver", "broker.example");
-            MQTTSettings.RememberSetting("mqttport", "1883");
 
-            Task result = MQTTSettings.SaveSettingsAsync();
+            Task result = MQTTSettings.SaveConnectionAsync(Connection());
 
-            Assert.AreEqual("broker.example", TestState.Store["mqttserver"]);
-            Assert.AreEqual("1883", TestState.Store["mqttport"]);
+            MQTTPluginSettings stored = TestState.Store.Stored;
+            Assert.AreEqual("broker.test", stored.Server);
+            Assert.AreEqual(8883, stored.Port);
+            Assert.AreEqual("user", stored.Username);
+            Assert.AreEqual("home/#", stored.Topic);
+            Assert.IsTrue(stored.UseTls);
+            Assert.AreNotEqual("secret", stored.EncryptedPassword);
+            Assert.AreEqual("secret", Crypt.UnprotectString(stored.EncryptedPassword));
+            Assert.AreEqual("broker.test", MQTTSettings.Current.Server);
             CollectionAssert.AreEqual(new[] { "reconnect after 1 save(s)" }, steps);
-            Assert.AreSame(reconnectTask, result);
+            Assert.AreSame(reconnect, result);
         }
 
-        // Staged values are never cleared, so a later save writes them again.
         [TestMethod]
-        public void SaveSettingsAsync_SecondSave_WritesEarlierStagedValuesAgain()
+        public void SaveConnectionAsync_KeepsTheActions()
         {
-            MQTTSettings.RememberSetting("mqttserver", "first.example");
-            MQTTSettings.SaveSettingsAsync();
-            TestState.Store["mqttserver"] = "changed.elsewhere";
+            MQTTSettings.SaveActions(new[] { new MqttActionSetting("Light", "home/light", "on") });
 
-            MQTTSettings.SaveSettingsAsync();
+            MQTTSettings.SaveConnectionAsync(Connection());
 
-            Assert.AreEqual("first.example", TestState.Store["mqttserver"]);
-            Assert.AreEqual(2, TestState.Store.SaveCount);
+            Assert.AreEqual("Light", TestState.Store.Stored.Actions.Single().Name);
         }
 
-        // B2: the UI stages mqtttls as text; it is converted to the bool the setting expects.
         [TestMethod]
-        [DataRow("True", true, DisplayName = "True")]
-        [DataRow("False", false, DisplayName = "False")]
-        public void SaveSettingsAsync_TlsStagedAsText_SavesAsBool(string staged, bool expected)
+        public void SaveConnectionAsync_StoreFails_ThrowsLogsAndKeepsSettingsWithoutReconnecting()
         {
             int reconnects = 0;
             MQTTSettings.Reconnect = () => { reconnects++; return Task.CompletedTask; };
-            TestState.Store["mqtttls"] = !expected;
-            MQTTSettings.RememberSetting("mqtttls", staged);
+            TestState.Store.SaveException = new UnauthorizedAccessException("read-only");
 
-            MQTTSettings.SaveSettingsAsync();
+            Assert.ThrowsException<UnauthorizedAccessException>(() => MQTTSettings.SaveConnectionAsync(Connection()));
 
-            Assert.AreEqual(expected, TestState.Store["mqtttls"]);
-            Assert.AreEqual(1, TestState.Store.SaveCount);
-            Assert.AreEqual(1, reconnects);
-        }
-
-        // B2: a value that can't be converted stops the whole save: nothing is written, the
-        // staged values are discarded so the next save isn't blocked, and the error is logged.
-        [TestMethod]
-        public void SaveSettingsAsync_UnconvertibleValue_WritesNothingAndDiscardsStaging()
-        {
-            int reconnects = 0;
-            MQTTSettings.Reconnect = () => { reconnects++; return Task.CompletedTask; };
-            MQTTSettings.RememberSetting("mqttserver", "broker.example");
-            MQTTSettings.RememberSetting("mqtttls", "yes");
-
-            using (var log = new LogCapture())
-            {
-                Assert.ThrowsException<FormatException>(() => MQTTSettings.SaveSettingsAsync());
-                Assert.IsTrue(log.Contains(log4net.Core.Level.Error, "Could not save MQTT settings"));
-            }
-            Assert.AreEqual("", TestState.Store["mqttserver"]);
-            Assert.AreEqual(false, TestState.Store["mqtttls"]);
-            Assert.AreEqual(0, TestState.Store.SaveCount);
+            Assert.AreEqual("", MQTTSettings.Current.Server);
             Assert.AreEqual(0, reconnects);
+            Assert.IsTrue(TestState.Log.Contains("Error", "Could not save MQTT settings: read-only"));
+        }
 
-            MQTTSettings.SaveSettingsAsync();
+        // --- SaveActions ---
 
-            Assert.AreEqual("", TestState.Store["mqttserver"]);
-            Assert.AreEqual(1, TestState.Store.SaveCount);
+        [TestMethod]
+        public void SaveActions_StoresActionsInOrderAndKeepsConnection()
+        {
+            MQTTSettings.SaveConnectionAsync(Connection());
+
+            MQTTSettings.SaveActions(new[]
+            {
+                new MqttActionSetting("Light", "home/light", "on"),
+                new MqttActionSetting("Climate", "home/climate", "toggle"),
+            });
+
+            CollectionAssert.AreEqual(new[] { "Light", "Climate" }, TestState.Store.Stored.Actions.Select(a => a.Name).ToArray());
+            Assert.AreEqual("home/climate", MQTTSettings.Current.Actions[1].Topic);
+            Assert.AreEqual("broker.test", TestState.Store.Stored.Server);
         }
 
         [TestMethod]
-        public void SaveSettingsAsync_UnknownSetting_ThrowsNotFoundAndWritesNothing()
+        public void SaveActions_LaterChangeToTheGivenList_DoesNotAffectSettings()
         {
-            MQTTSettings.RememberSetting("mqttserver", "broker.example");
-            MQTTSettings.RememberSetting("doesNotExist", "x");
+            var actions = new List<MqttActionSetting> { new MqttActionSetting("Light", "home/light", "on") };
+            MQTTSettings.SaveActions(actions);
 
-            Assert.ThrowsException<SettingsPropertyNotFoundException>(() => MQTTSettings.SaveSettingsAsync());
-            Assert.AreEqual("", TestState.Store["mqttserver"]);
-            Assert.AreEqual(0, TestState.Store.SaveCount);
+            actions[0].Name = "Changed";
+            actions.Add(new MqttActionSetting("Extra", "t", "m"));
+
+            Assert.AreEqual("Light", MQTTSettings.Current.Actions.Single().Name);
+        }
+
+        [TestMethod]
+        public void SaveActions_StoreFails_ThrowsAndKeepsActions()
+        {
+            MQTTSettings.SaveActions(new[] { new MqttActionSetting("Light", "home/light", "on") });
+            TestState.Store.SaveException = new UnauthorizedAccessException("read-only");
+
+            Assert.ThrowsException<UnauthorizedAccessException>(() => MQTTSettings.SaveActions(new MqttActionSetting[0]));
+
+            Assert.AreEqual(1, MQTTSettings.Current.Actions.Count);
+        }
+
+        // Readers on other threads keep a complete, unchanging set.
+        [TestMethod]
+        public void Save_ReplacesCurrentInsteadOfChangingIt()
+        {
+            MQTTPluginSettings before = MQTTSettings.Current;
+
+            MQTTSettings.SaveConnectionAsync(Connection());
+
+            Assert.AreNotSame(before, MQTTSettings.Current);
+            Assert.AreEqual("", before.Server);
+        }
+
+        [TestMethod]
+        public void Save_BeforeInitialize_Throws()
+        {
+            typeof(MQTTSettings).GetField("store", BindingFlags.NonPublic | BindingFlags.Static).SetValue(null, null);
+
+            Assert.ThrowsException<InvalidOperationException>(() => MQTTSettings.SaveActions(new MqttActionSetting[0]));
         }
     }
 }

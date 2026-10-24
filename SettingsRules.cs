@@ -3,7 +3,7 @@ using System.Collections.Generic;
 namespace User.MQTTPlugin
 {
     /// <summary>
-    /// Checks on the settings as returned by MQTTSettings.LoadSettings().
+    /// Checks on the settings.
     /// </summary>
     internal static class SettingsRules
     {
@@ -11,19 +11,31 @@ namespace User.MQTTPlugin
         /// Whether the user has provided MQTT settings: a broker is the one setting that has
         /// no usable default.
         /// </summary>
-        internal static bool HasBrokerConfigured(IDictionary<string, string> settings)
+        internal static bool HasBrokerConfigured(MQTTPluginSettings settings)
         {
-            return settings.TryGetValue("mqttserver", out string server) && !string.IsNullOrEmpty(server);
+            return !string.IsNullOrEmpty(settings.Server);
         }
 
-        internal static bool IsTlsEnabled(IDictionary<string, string> settings)
+        /// <summary>The TLS flag as stored in user.config before F4 (the text "True").</summary>
+        internal static bool IsTlsEnabled(IDictionary<string, string> legacySettings)
         {
-            return settings.TryGetValue("mqtttls", out string tlsValue) && tlsValue == "True";
+            return legacySettings.TryGetValue("mqtttls", out string tlsValue) && tlsValue == "True";
         }
 
+        internal static bool IsValidPort(int port)
+        {
+            return port >= 1 && port <= 65535;
+        }
+
+        /// <summary>Parses a port number, accepting only 1 to 65535.</summary>
         internal static bool TryParsePort(string text, out int port)
         {
-            return int.TryParse(text, out port);
+            if (int.TryParse(text, out port) && IsValidPort(port))
+            {
+                return true;
+            }
+            port = 0;
+            return false;
         }
     }
 }

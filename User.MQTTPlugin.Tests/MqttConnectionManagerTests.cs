@@ -53,10 +53,10 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void Start_ConnectsWithSavedSettingsAndSubscribes()
         {
-            harness.SetSetting("mqttport", "8883");
-            harness.SetSetting("mqtttls", "True");
-            harness.SetSetting("mqttuser", "user");
-            harness.SetSetting("mqttpass", Crypt.ProtectString("secret"));
+            harness.EditSettings(s => s.Port = 8883);
+            harness.EditSettings(s => s.UseTls = true);
+            harness.EditSettings(s => s.Username = "user");
+            harness.EditSettings(s => s.EncryptedPassword = Crypt.ProtectString("secret"));
 
             Wait(manager.Start(owner));
 
@@ -101,7 +101,7 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void Start_NoBroker_LogsInfoAndDoesNotConnect()
         {
-            harness.SetSetting("mqttserver", "");
+            harness.EditSettings(s => s.Server = "");
 
             Wait(manager.Start(owner));
 
@@ -113,18 +113,18 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void Start_InvalidPort_WarnsAndDoesNotConnect()
         {
-            harness.SetSetting("mqttport", "abc");
+            harness.EditSettings(s => s.Port = 0);
 
             Wait(manager.Start(owner));
 
             Assert.AreEqual(0, harness.Factory.Created.Count);
-            Assert.IsTrue(harness.Log.Contains("Warn", "Invalid or missing MQTT port 'abc'. Aborting connect."));
+            Assert.IsTrue(harness.Log.Contains("Warn", "Invalid MQTT port 0. Aborting connect."));
         }
 
         [TestMethod]
         public void Start_NoTopic_ConnectsWithoutSubscribingAndWarns()
         {
-            harness.SetSetting("mqtttopic", "");
+            harness.EditSettings(s => s.Topic = "");
 
             Wait(manager.Start(owner));
 
@@ -256,7 +256,7 @@ namespace User.MQTTPlugin.Tests
         [TestMethod]
         public void CheckConnection_NoBroker_DoesNothing()
         {
-            harness.SetSetting("mqttserver", "");
+            harness.EditSettings(s => s.Server = "");
             Wait(manager.Start(owner));
 
             Wait(manager.CheckConnection());
@@ -413,8 +413,8 @@ namespace User.MQTTPlugin.Tests
         {
             StartConnected();
             FakeMqttClient oldClient = harness.LastClient;
-            harness.SetSetting("mqttserver", "new.test");
-            harness.SetSetting("mqtttopic", "new/#");
+            harness.EditSettings(s => s.Server = "new.test");
+            harness.EditSettings(s => s.Topic = "new/#");
 
             Wait(manager.ReconnectAsync());
 
@@ -434,7 +434,7 @@ namespace User.MQTTPlugin.Tests
         {
             StartConnected();
             FakeMqttClient oldClient = harness.LastClient;
-            harness.SetSetting("mqttserver", "");
+            harness.EditSettings(s => s.Server = "");
 
             Wait(manager.ReconnectAsync());
 

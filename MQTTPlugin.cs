@@ -11,8 +11,6 @@ namespace User.MQTTPlugin
     [PluginName("MQTT plugin")]
     public class MQTTPlugin : IPlugin, IDataPlugin, IWPFSettingsV2
     {
-        public MQTTPluginSettings Settings;
-
         private static readonly IPluginLog Log = new SimHubLog();
 
         // The PluginManager passed to Init, used to clear and register actions.
@@ -80,8 +78,7 @@ namespace User.MQTTPlugin
             MqttConnectionManager.Shared.Stop(this);
             MqttConnectionManager.Shared.MessageReceived -= OnMqttMessage;
 
-            // Save settings
-            this.SaveCommonSettings("GeneralSettings", Settings);
+            // Nothing to save here: MQTTSettings saves every change right away.
 
             if (Instance == this)
             {
@@ -96,10 +93,7 @@ namespace User.MQTTPlugin
         /// <returns></returns>
         public System.Windows.Controls.Control GetWPFSettingsControl(PluginManager pluginManager)
         {
-            const bool useRedesignedSettingsUI = true;
-            return useRedesignedSettingsUI
-                ? (System.Windows.Controls.Control)new SettingsControlV2(this)
-                : new SettingsControl(this);
+            return new SettingsControlV2(this);
         }
 
         /// <summary>
@@ -113,8 +107,8 @@ namespace User.MQTTPlugin
 
             Instance = this;
 
-            // Load settings
-            Settings = this.ReadCommonSettings<MQTTPluginSettings>("GeneralSettings", () => new MQTTPluginSettings());
+            // Load the settings from SimHub's storage; the first time, this migrates them from user.config (D1).
+            MQTTSettings.Initialize(new SimHubSettingsStore(this), LegacySettings.Load);
 
             // Declare a property available in the property list, this gets evaluated "on demand" (when shown or used in formulas)
             this.AttachDelegate("CurrentDateTime", () => DateTime.Now);
@@ -123,7 +117,7 @@ namespace User.MQTTPlugin
 
             // Register the saved actions now, so they work without opening the settings page (B4).
             actionsPluginManager = pluginManager;
-            RegisterActions(ActionRegistration.LoadSaved(MQTTSettings.LoadSettings(), Log));
+            RegisterActions(MQTTSettings.Current.Actions);
 
             // Connects in the background, so a slow or unreachable broker doesn't hold up SimHub (D5).
             MqttConnectionManager.Shared.MessageReceived += OnMqttMessage;
@@ -139,7 +133,7 @@ namespace User.MQTTPlugin
         /// Replaces all registered MQTT actions with <paramref name="actions"/>. Called from Init
         /// and when the actions are saved on the settings page.
         /// </summary>
-        internal void RegisterActions(IDictionary<string, ValueTuple<string, string>> actions)
+        internal void RegisterActions(IEnumerable<MqttActionSetting> actions)
         {
             ActionRegistration.Register(
                 new SimHubActionRegistry(this, actionsPluginManager ?? PluginManager),

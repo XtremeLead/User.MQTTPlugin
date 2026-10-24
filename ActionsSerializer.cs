@@ -2,29 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization;
-using System.Xml;
 
 namespace User.MQTTPlugin
 {
     /// <summary>
-    /// Reads and writes the mqttactions setting: a DataContractSerializer XML dump of
-    /// action name to (topic, message).
+    /// Reads the actions as stored in user.config before F4: a DataContractSerializer XML dump of
+    /// action name to (topic, message). Only the migration (SettingsMigration) uses it.
     /// </summary>
     internal static class ActionsSerializer
     {
-        internal static string Serialize(Dictionary<string, ValueTuple<string, string>> actions)
-        {
-            DataContractSerializer serializer = new DataContractSerializer(actions.GetType());
-            using (StringWriter sw = new StringWriter())
-            using (XmlTextWriter writer = new XmlTextWriter(sw))
-            {
-                writer.Formatting = Formatting.Indented;
-                serializer.WriteObject(writer, actions);
-                writer.Flush();
-                return sw.ToString();
-            }
-        }
-
         internal static Dictionary<string, ValueTuple<string, string>> Deserialize(string xml)
         {
             using (Stream stream = new MemoryStream())
