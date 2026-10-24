@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest an idea or improvement for the plugin.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: Describe what you're trying to achieve, for example with your dashboard, buttons or home automation.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: How could the plugin help?
+      description: Describe the feature or change you have in mind.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What have you tried so far?
+      description: Workarounds or other solutions you've considered.

@@ -4,7 +4,17 @@ MQTT Plugin is a SimHub plugin that shows MQTT data on your dashboards and sends
 
 For example, a button on your wheel can publish a message that triggers a Home Assistant automation, for instance one that controls your air conditioning. Home Assistant then publishes the result to the topic the plugin subscribes to, and your SimHub dashboard shows it.
 
-## Installation/Building
+## Installation
+
+1. Download the zip of the latest version from [Releases](https://github.com/XtremeLead/User.MQTTPlugin/releases/latest).
+2. Close SimHub.
+3. Extract the zip and copy both files, `User.MQTTPlugin.dll` and `M2Mqtt.Net.dll`, into your SimHub folder (usually `C:\Program Files (x86)\SimHub`). When you update, overwrite the existing files.
+4. Start SimHub. The first time, SimHub asks whether to enable the new plugin; confirm it.
+5. Open **MQTT plugin** in SimHub's left menu and set up your connection (see [Usage](#usage)).
+
+Each release lists the SHA-256 checksum of its zip. To check your download, run `Get-FileHash .\User.MQTTPlugin-v<version>.zip` in PowerShell and compare the result.
+
+## Building from source
 
 You need SimHub installed in `C:\Program Files (x86)\SimHub` (the build references its assemblies) and a recent MSBuild (ToolsVersion 15 or later). You can download MSBuild from https://aka.ms/vs/17/release/vs_BuildTools.exe, or at https://visualstudio.microsoft.com/downloads/ under 'Build Tools for Visual Studio'.
 
@@ -30,7 +40,7 @@ Open the plugin's settings page in SimHub and fill in your broker, port, user na
 1. Click **Test Connection**. **Save** only becomes available after a successful test, and any change to a field disables it again until you test once more.
 2. Click **Save**. The plugin reconnects right away with the new settings; a new topic replaces the old one.
 
-Tick **Use TLS/SSL** for an encrypted connection; the port switches between 1883 and 8883 for you. The plugin doesn't check the broker's certificate against a certificate authority.
+Tick **Use TLS/SSL** for an encrypted connection; the port switches between 1883 and 8883 for you. The plugin doesn't check the broker's certificate yet, so only use it with a broker on a network you trust; see [SECURITY.md](SECURITY.md).
 
 The plugin connects in the background when SimHub starts. If the broker can't be reached, it keeps retrying, waiting 2, 5, 10, 30 and then 60 seconds between attempts.
 
@@ -87,7 +97,7 @@ Versions before 3.0 stored their settings in a `user.config` file that was lost 
 
 ### Logging
 
-The plugin writes to the SimHub log:
+The plugin writes to the SimHub log, `C:\Program Files (x86)\SimHub\Logs\SimHub.txt`:
 
 - connecting, reconnecting and subscribing at Info;
 - failed connections and messages that couldn't be sent at Warn;
@@ -101,16 +111,7 @@ The changes in each version are listed in [CHANGELOG.md](CHANGELOG.md). Download
 
 ## Contributing
 
-Pull requests are welcome. For major changes, please open an issue first to discuss what you would like to change.
-
-The unit tests (MSTest) live in `User.MQTTPlugin.Tests`. Build the solution in Release, so the build doesn't try to write to the SimHub folder, and run the tests with the test runner from the NuGet packages:
-
-```powershell
-& $msbuild .\User.MQTTPlugin.sln -p:Configuration=Release
-& .\packages\Microsoft.TestPlatform.17.11.1\tools\net462\Common7\IDE\Extensions\TestPlatform\vstest.console.exe .\User.MQTTPlugin.Tests\bin\Release\User.MQTTPlugin.Tests.dll
-```
-
-Please add or update tests with your changes.
+Bug reports, ideas and pull requests are welcome. Report a bug or suggest a feature under [Issues](https://github.com/XtremeLead/User.MQTTPlugin/issues/new/choose). Before you open a pull request, read [CONTRIBUTING.md](CONTRIBUTING.md): it explains how to build and test, and what a change needs. Report security problems privately, as described in [SECURITY.md](SECURITY.md).
 
 Version 3.0 was developed with the help of [Claude Code](https://claude.com/claude-code). That is why the repository contains `CLAUDE.md` (instructions for Claude Code), `PLAN.md` and `PROGRESS.md` (the improvement plan and its progress, in Dutch), and the skills in `.claude/skills/`. You don't need any of them to build or use the plugin.
 

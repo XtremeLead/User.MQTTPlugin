@@ -1,0 +1,65 @@
+name: Bug report
+description: Something in the plugin doesn't work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Found a security problem? Don't report it here; follow [SECURITY.md](https://github.com/XtremeLead/User.MQTTPlugin/blob/master/SECURITY.md) instead.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the problem, and what you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the MQTT plugin settings
+        2. ...
+    validations:
+      required: true
+  - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: The version you installed, for example 3.0.1.
+    validations:
+      required: true
+  - type: input
+    id: simhub-version
+    attributes:
+      label: SimHub version
+      description: Shown in SimHub under Settings, or in the title bar.
+    validations:
+      required: true
+  - type: input
+    id: broker
+    attributes:
+      label: MQTT broker
+      description: Which broker you use, for example Mosquitto, the Home Assistant add-on or EMQX.
+  - type: dropdown
+    id: tls
+    attributes:
+      label: Is "Use TLS/SSL" on?
+      options:
+        - "No"
+        - "Yes"
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: SimHub log
+      description: |
+        The lines around the problem from `C:\Program Files (x86)\SimHub\Logs\SimHub.txt`. Lines from the plugin contain "MQTT".
+        Remove anything you don't want to share, such as your broker's address or your user name.
+      render: text
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Screenshots, your topic or payload, or anything else that helps.
