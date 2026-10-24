@@ -62,6 +62,10 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 
 ## Log
 
+- **2026-10-24:** CLAUDE.md ingekort, buiten het plan, volgens het advies in de documentatie van Claude Code (onder de 200 regels, alleen wat in elke sessie nodig is). Van 107 regels en ongeveer 17.000 tekens naar 76 regels en ongeveer 8.400 tekens.
+  - De testdetails (testproject, fakes en harnesses, bestanden en pakketten toevoegen, en de kanttekeningen bij de skills `code-testing` en `writing-mstest-tests`) staan nu in `.claude/rules/testing.md`. Die wordt alleen geladen bij werk in `User.MQTTPlugin.Tests/`.
+  - De afspraken voor het instellingenscherm staan in `.claude/rules/settings-ui.md`, die geladen wordt bij `SettingsControlV2*`, `SettingsViewLogic.cs` en `MultiClickCounter.cs`.
+  - De architectuursectie bevat alleen nog wat niet uit de code blijkt: de redenen (D1, D2, D4–D6, B5), de levenscyclus en de valkuilen. De build- en testcommando's staan samen in één blok. De regel dat elke wijziging tests krijgt, staat nog in CLAUDE.md.
 - **2026-10-24:** Wensen W1–W5 met de gebruiker in het plan opgenomen. Ze zijn nog niet in een fase ingedeeld.
   - **Bewust niet opgenomen:**
     - SimHub-telemetrie naar MQTT publiceren: de gebruiker wil alleen acties uitvoeren en het resultaat op een dashboard zien.
