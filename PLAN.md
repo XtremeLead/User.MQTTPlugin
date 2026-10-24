@@ -78,6 +78,15 @@ Elk punt heeft een vaste code (B = bug, A = architectuur, L = leesbaarheid, T = 
   - Dashboards krijgen dus niet de tekst die de afzender stuurde.
 - **Richting:** parsen met `DateParseHandling.None`, zodat datumstrings ongewijzigd blijven, en met `FloatParseHandling.Decimal`, zodat het aantal decimalen behouden blijft.
 
+### B12. Instellingenscherm: lange meldingen afgekapt en onderste acties onbereikbaar
+*Gemeld door de gebruiker op 2026-10-23, tijdens de controle van F3. Bestond al vóór het verbeterplan.*
+- **Oorzaak:**
+  - De statusregels zijn `Label`s met een vaste hoogte binnen een vaste breedte van 491, dus een lange melding wordt afgekapt.
+  - Het scherm heeft `Height="0" MinHeight="1000"` en geen eigen scrollgebied, en SimHub scrollt pluginpagina's niet.
+  - De actielijst zit in een eigen kleine scrollbox (`MaxHeight="260"`).
+- **Gevolg:** de melding over dubbele namen valt deels weg. Op een klein scherm zijn de onderste acties en knoppen niet te bereiken.
+- **Oplossing (in F3 meegenomen):** de hele pagina in één `ScrollViewer`, geen vaste hoogte en geen aparte scrollbox voor de acties. De statusregels worden `TextBlock`s met `TextWrapping="Wrap"`.
+
 ## Architectuur
 
 ### A1. Globale statische toestand in `MQTTClient`
@@ -146,7 +155,7 @@ Elke fase levert een werkende, bouwbare plugin op met MSTest-tests, zoals [CLAUD
 | **F0b. Seams zonder gedragswijziging** | Op verzoek van de gebruiker (2026-10-21) naar voren gehaald: eerst de huidige code volledig testen, dan pas fixen. Pure helpers afsplitsen (berichtformatter met tijdstip als parameter, backoff, "settings found"-check, TLS- en poortcontrole, acties-serializer), een interface voor de instellingenopslag, en de UI-logica van `SettingsControlV2` in een testbare klasse. Gedrag blijft exact gelijk; bekende bugs blijven bestaan en worden met tests vastgelegd. T2 (adapter om M2Mqtt) en T4 (logger) blijven in F2. | T1, T3, deels T5 |
 | **F1. Snelle, veilige bugfixes** | Exceptie van de client-constructor afvangen, en de watchdog vóór de connect starten. Bool-instellingen correct opslaan en de staging-lijst wissen na een fout. Het pad voor een leeg wachtwoord en het `null`-resultaat van `Protect` afvangen. De "geen instellingen"-check repareren. `AttachDelegate` uit de setter halen. Logniveaus aanpassen en een melding toevoegen bij een publish zonder verbinding. De berichtformatter afsplitsen, met tests (in F0b al gedaan). Payloads parsen zonder datum- en decimaalconversie. | B1, B2, B7, B8, B9, B10, B11, deels A4, T1, L6 |
 | **F2. Verbindingsbeheerder** | De statische `MQTTClient` vervangen door een beheerder met adapter en één lock. Test gebruikt een aparte client. Save forceert een reconnect en zegt het oude topic op. Dode velden opruimen. Tests met een fake client. | B3, B6, A1, T2, T4, T5 |
-| **F3. Acties naar de plugin** | Registreren in `Init` vanuit de instellingen. De UI roept alleen de plugin aan. Hernoemen, verwijderen en dubbele namen correct afhandelen. Serialisatie-helper met tests. | B4, A3 |
+| **F3. Acties naar de plugin** | Registreren in `Init` vanuit de instellingen. De UI roept alleen de plugin aan. Hernoemen, verwijderen en dubbele namen correct afhandelen. Serialisatie-helper met tests. Op verzoek van de gebruiker ook de schermindeling (B12). | B4, A3, B12 |
 | **F4. Instellingenmodel en opslag** | Getypeerd model in `ReadCommonSettings` en eenmalige migratie van de huidige `user.config` (zie D1). | B5, A2, T3, L2 |
 | **F5. Opruimen en leesbaarheid** | Oude `SettingsControl` en template-resten weg (zie D3). Handlers hernoemen en dubbele logica samenvoegen. | A5, L1, L3, L4, L5 |
 | **F6. Documentatie** | README en de architectuursectie van CLAUDE.md bijwerken naar de nieuwe opzet. | — |
@@ -161,5 +170,7 @@ Elke fase levert een werkende, bouwbare plugin op met MSTest-tests, zoals [CLAUD
   - **Besluit (2026-10-22):** één gedeelde (`MqttConnectionManager.Shared`), op advies. SimHub bouwt de plugin bij elke gamewissel opnieuw op, en het instellingenscherm kan naar een oude instantie wijzen (B4). Met één gedeelde beheerder werken Save en Test altijd op de echte verbinding. `Init` start de beheerder en `End` stopt hem.
 - **D5. Moet `Init` wachten op de eerste verbinding?**
   - **Besluit (2026-10-22):** nee. `Start()` maakt de eerste verbinding op de achtergrond, zodat een onbereikbare broker het opstarten van SimHub niet ophoudt.
+- **D6. Wat te doen met dubbele actienamen?**
+  - **Besluit (2026-10-23):** Save weigeren en een melding tonen; er wordt dan niets opgeslagen. Hoofd- en kleine letters tellen als dezelfde naam.
 - **D3. Oude `SettingsControl` verwijderen?**
   - **Besluit (2026-10-21):** ja, in F5. Het scherm wordt nooit getoond, omdat `GetWPFSettingsControl` via een constante altijd V2 kiest. Bij laten staan zou het in F2–F4 telkens mee aangepast moeten worden. `DeserializeDict` verhuist in F3 naar de serializer-helper. Terughalen kan via git.

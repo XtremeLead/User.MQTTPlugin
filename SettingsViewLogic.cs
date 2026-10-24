@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using System.Windows.Input;
 
 namespace User.MQTTPlugin
@@ -35,6 +37,14 @@ namespace User.MQTTPlugin
             return port;
         }
 
+        /// <summary>
+        /// A triple click selects all text; one or two clicks keep WPF's caret and word selection.
+        /// </summary>
+        internal static bool SelectsAllText(int clickCount)
+        {
+            return clickCount >= 3;
+        }
+
         internal static bool IsPortKey(Key key)
         {
             return (key >= Key.D0 && key <= Key.D9) || (key >= Key.NumPad0 && key <= Key.NumPad9);
@@ -51,6 +61,15 @@ namespace User.MQTTPlugin
         internal static bool IsCompleteAction(string name, string topic, string message)
         {
             return !string.IsNullOrEmpty(name) && !string.IsNullOrEmpty(topic) && !string.IsNullOrEmpty(message);
+        }
+
+        /// <summary>D6: why the actions were not saved.</summary>
+        internal static string DuplicateActionsMessage(IList<string> duplicateNames)
+        {
+            string names = string.Join(", ", duplicateNames.Select(n => $"'{n}'"));
+            return duplicateNames.Count == 1
+                ? $"Duplicate action name {names} — action names must be unique. Nothing was saved."
+                : $"Duplicate action names {names} — action names must be unique. Nothing was saved.";
         }
 
         internal static string ActionsSavedMessage(int savedCount, int skippedCount)

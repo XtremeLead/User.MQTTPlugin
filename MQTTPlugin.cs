@@ -1,6 +1,7 @@
 ﻿using GameReaderCommon;
 using SimHub.Plugins;
 using System;
+using System.Collections.Generic;
 using System.Windows.Media;
 
 namespace User.MQTTPlugin
@@ -11,6 +12,11 @@ namespace User.MQTTPlugin
     public class MQTTPlugin : IPlugin, IDataPlugin, IWPFSettingsV2
     {
         public MQTTPluginSettings Settings;
+
+        private static readonly IPluginLog Log = new SimHubLog();
+
+        // The PluginManager passed to Init, used to clear and register actions.
+        private PluginManager actionsPluginManager;
 
         public static MQTTPlugin Instance { get; private set; }
 
@@ -115,6 +121,10 @@ namespace User.MQTTPlugin
 
             this.AttachDelegate("MQTTMessage", () => mqttMessage);
 
+            // Register the saved actions now, so they work without opening the settings page (B4).
+            actionsPluginManager = pluginManager;
+            RegisterActions(ActionRegistration.LoadSaved(MQTTSettings.LoadSettings(), Log));
+
             // Connects in the background, so a slow or unreachable broker doesn't hold up SimHub (D5).
             MqttConnectionManager.Shared.MessageReceived += OnMqttMessage;
             MqttConnectionManager.Shared.Start(this);
@@ -125,14 +135,18 @@ namespace User.MQTTPlugin
             MqttMessage = message;
         }
 
-        public void AddAction(string name, string topic, string message)
+        /// <summary>
+        /// Replaces all registered MQTT actions with <paramref name="actions"/>. Called from Init
+        /// and when the actions are saved on the settings page.
+        /// </summary>
+        internal void RegisterActions(IDictionary<string, ValueTuple<string, string>> actions)
         {
-            this.AddAction(name, (a, b) =>
-            {
-                MqttConnectionManager.Shared.Publish(topic, message);
-            });
+            ActionRegistration.Register(
+                new SimHubActionRegistry(this, actionsPluginManager ?? PluginManager),
+                actions,
+                MqttConnectionManager.Shared.Publish,
+                Log);
         }
-
 
     }
 }

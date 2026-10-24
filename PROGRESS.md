@@ -12,7 +12,7 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | F0b. Seams zonder gedragswijziging | ✅ | Toegevoegd op verzoek van de gebruiker, zie PLAN.md. 139 tests groen en handmatig gecontroleerd in SimHub |
 | F1. Snelle, veilige bugfixes | ✅ | 158 tests groen; B1, B2 en acties handmatig bevestigd in SimHub |
 | F2. Verbindingsbeheerder | ✅ | 186 tests groen; handmatig bevestigd in SimHub (opstarten, Test, Save met nieuw topic, gamewissel, acties, afsluiten) |
-| F3. Acties naar de plugin | ⬜ | |
+| F3. Acties naar de plugin | ✅ | Tests groen; B4, B12 en acties (opstarten, koppelingen, dubbele namen, hernoemen, verwijderen) handmatig bevestigd in SimHub |
 | F4. Instellingenmodel en opslag | ⬜ | |
 | F5. Opruimen en leesbaarheid | ⬜ | |
 | F6. Documentatie | ⬜ | |
@@ -24,7 +24,7 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | B1 | DNS-fout bij opstarten zet de plugin uit | F1 | ✅ (ook handmatig bevestigd in SimHub) |
 | B2 | TLS-vinkje blokkeert het opslaan | F1 | ✅ (ook handmatig bevestigd in SimHub) |
 | B3 | Test verbreekt de live verbinding, Save past niet toe | F2 | ✅ (ook handmatig bevestigd in SimHub) |
-| B4 | Acties pas actief na openen van de instellingen | F3 | ⬜ |
+| B4 | Acties pas actief na openen van de instellingen | F3 | ✅ (ook handmatig bevestigd in SimHub) |
 | B5 | Instellingen weg na SimHub-update | F4 | ⬜ |
 | B6 | Race conditions rond de verbinding | F2 | ✅ |
 | B7 | "Please provide MQTT settings" wordt nooit getoond | F1 | ✅ |
@@ -32,9 +32,10 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | B9 | Foutpaden rond het wachtwoord | F1 | ✅ |
 | B10 | Ruis in het log, stille publish | F1 | ✅ |
 | B11 | JSON-payloads worden herschreven (tijdzone, decimalen) | F1 | ✅ |
+| B12 | Instellingenscherm: meldingen afgekapt, niet scrollbaar | F3 | ✅ (ook handmatig bevestigd in SimHub) |
 | A1 | Verbindingsbeheerder in plaats van statische toestand | F2 | ✅ |
 | A2 | Eén getypeerd instellingenmodel | F4 | ⬜ |
-| A3 | Acties bij de plugin | F3 | ⬜ |
+| A3 | Acties bij de plugin | F3 | ✅ |
 | A4 | Berichtverwerking los van bijwerkingen | F1/F2 | ✅ |
 | A5 | Oude code en template-resten weg | F5 | ⬜ |
 | L1–L6 | Leesbaarheid | F1/F4/F5 | 🔄 L6 ✅ (F1, behalve het oude `SettingsControl`, dat in F5 verdwijnt) |
@@ -48,9 +49,36 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | D2 | Timestamp: extra ISO 8601-veld? | Ja: `timestamp` blijft `nl-NL`, extra veld `timestampIso` (`DateTimeOffset.ToString("o")`) | 2026-10-21 |
 | D4 | Gedeelde verbindingsbeheerder of één per plugininstantie? | Gedeeld (`MqttConnectionManager.Shared`), op advies | 2026-10-22 |
 | D5 | Moet `Init` wachten op de eerste verbinding? | Nee, de eerste verbinding gebeurt op de achtergrond | 2026-10-22 |
+| D6 | Dubbele actienamen? | Save weigeren met een melding; hoofd- en kleine letters tellen als dezelfde naam | 2026-10-23 |
 | D3 | Oude `SettingsControl` verwijderen? | Ja, in F5; `DeserializeDict` gaat in F3 naar de serializer-helper | 2026-10-21 |
 
 ## Log
+
+- **2026-10-24:** Driedubbelklikken in alle velden door de gebruiker bevestigd in SimHub.
+
+- **2026-10-24:** Driedubbelklikken werkte in SimHub nog niet. De eerste versie gebruikte `MouseButtonEventArgs.ClickCount`, dat daar kennelijk niet tot 3 komt. Nu telt `MultiClickCounter` zelf: kliks op hetzelfde veld binnen de Windows-dubbelkliktijd (`GetDoubleClickTime`) vormen een reeks.
+  - Op verzoek van de gebruiker werkt het nu in alle velden. De handler zit op `PreviewMouseLeftButtonDown` van de hele pagina en zoekt de `TextBox` of `PasswordBox` onder de muis, dus actierijen die later worden toegevoegd doen ook mee.
+  - Er zijn nu 215 tests en ze slagen allemaal. Dit moet nog handmatig worden gecontroleerd.
+
+- **2026-10-23:** F3 en B12 door de gebruiker bevestigd in SimHub: scrollen werkt, de melding staat er volledig en de rest van de pagina is in orde.
+
+  Extra wens van de gebruiker, meteen gebouwd: driedubbelklikken in het veld MQTT Sub Topic selecteert alle tekst (`SelectAllOnTripleClick` op `PreviewMouseLeftButtonDown`, met `SettingsViewLogic.SelectsAllText`). Er zijn nu 208 tests en ze slagen allemaal. Dit moet nog handmatig worden gecontroleerd.
+
+- **2026-10-23:** Handmatige controle van F3 door de gebruiker:
+  - Acties werken zonder de instellingen te openen (B4).
+  - Bestaande koppelingen blijven werken na "Save actions" (`ClearActions` en opnieuw registreren).
+  - De melding over dubbele namen verschijnt.
+  - Verwijderen werkt.
+  - Hernoemen geeft een nieuwe actie. De knopkoppeling moet opnieuw worden gezet, en SimHub biedt dan zelf aan de koppeling aan de oude naam te verwijderen. Dat is verwacht gedrag (staat in CLAUDE.md).
+
+  Gemeld: de melding over dubbele namen is afgekapt, en de pagina is niet te scrollen. Dat is opgenomen als B12 (PLAN.md) en meteen opgelost in `SettingsControlV2.xaml`: één `ScrollViewer` om de pagina, geen vaste hoogte, geen aparte scrollbox voor de acties, en statusregels als `TextBlock` die teruglopen. De 204 tests slagen.
+
+- **2026-10-23:** F3 gebouwd. Er zijn nu 204 tests, en drie runs na elkaar slaagden allemaal.
+  - **Registratie bij de plugin (A3, B4):** `Init` laadt de opgeslagen acties en registreert ze via `RegisterActions`. Die wist eerst alle acties van de plugin met `PluginManager.ClearActions(typeof(MQTTPlugin))` (publiek in SimHub, gevonden met reflectie) en voegt dan de huidige set toe. Hernoemde en verwijderde acties verdwijnen daardoor.
+  - **Instellingenscherm:** bij het openen worden de acties alleen nog getoond. "Save actions" valideert met `ActionRules.Validate`, slaat op en roept `MQTTPlugin.Instance.RegisterActions` aan.
+  - **Dubbele namen (D6):** Save wordt geweigerd met de melding "Duplicate action name 'X' — action names must be unique. Nothing was saved.". Hoofd- en kleine letters tellen als dezelfde naam.
+  - **Nieuwe code:** `ActionRules`, `ActionRegistration` (met `IActionRegistry`/`SimHubActionRegistry`) en `SettingsViewLogic.DuplicateActionsMessage`. Het oude `SettingsControl` registreert niets meer.
+  - **Nog handmatig te controleren:** of bestaande koppelingen onder Controls and events blijven werken na `ClearActions` en opnieuw registreren.
 
 - **2026-10-23:** F2 afgerond. De gebruiker heeft Save met een nieuw topic bevestigd: het log toont direct "Connecting", "Connected" en "Subscribed to MQTT topic …" met het nieuwe topic.
 

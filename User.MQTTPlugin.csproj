@@ -69,6 +69,8 @@
     <Reference Include="PresentationFramework" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ActionRegistration.cs" />
+    <Compile Include="ActionRules.cs" />
     <Compile Include="ActionsSerializer.cs" />
     <Compile Include="Crypt.cs" />
     <Compile Include="MessageFormatter.cs" />
@@ -78,6 +80,7 @@
     <Compile Include="MQTTPlugin.cs" />
     <Compile Include="MQTTPluginSettings.cs" />
     <Compile Include="MQTTSettings.cs" />
+    <Compile Include="MultiClickCounter.cs" />
     <Compile Include="PluginServices.cs" />
     <Compile Include="Settings.cs" />
     <Compile Include="SettingsRules.cs" />

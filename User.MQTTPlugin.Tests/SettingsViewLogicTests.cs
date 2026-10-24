@@ -65,6 +65,18 @@ namespace User.MQTTPlugin.Tests
             Assert.AreEqual("1883", SettingsViewLogic.PortAfterTlsChange(null, "1883"));
         }
 
+        // --- SelectsAllText ---
+
+        [TestMethod]
+        [DataRow(1, false, DisplayName = "single click places the caret")]
+        [DataRow(2, false, DisplayName = "double click selects a word")]
+        [DataRow(3, true, DisplayName = "triple click selects all")]
+        [DataRow(4, true, DisplayName = "more clicks keep everything selected")]
+        public void SelectsAllText_OnlyFromTheThirdClick(int clickCount, bool expected)
+        {
+            Assert.AreEqual(expected, SettingsViewLogic.SelectsAllText(clickCount));
+        }
+
         // --- IsPortKey ---
 
         [TestMethod]
@@ -112,6 +124,23 @@ namespace User.MQTTPlugin.Tests
         public void IsCompleteAction_RequiresAllThreeFields(string name, string topic, string message, bool expected)
         {
             Assert.AreEqual(expected, SettingsViewLogic.IsCompleteAction(name, topic, message));
+        }
+
+        // D6
+        [TestMethod]
+        public void DuplicateActionsMessage_OneName()
+        {
+            Assert.AreEqual(
+                "Duplicate action name 'Light' — action names must be unique. Nothing was saved.",
+                SettingsViewLogic.DuplicateActionsMessage(new[] { "Light" }));
+        }
+
+        [TestMethod]
+        public void DuplicateActionsMessage_SeveralNames()
+        {
+            Assert.AreEqual(
+                "Duplicate action names 'Light', 'Climate' — action names must be unique. Nothing was saved.",
+                SettingsViewLogic.DuplicateActionsMessage(new[] { "Light", "Climate" }));
         }
 
         [TestMethod]

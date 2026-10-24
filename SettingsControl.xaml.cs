@@ -75,8 +75,6 @@ namespace User.MQTTPlugin
                         btnSaveActions.Visibility = Visibility.Visible;
 
                         //MQTTPlugin plugin = new MQTTPlugin();
-                        //plugin.AddAction(name, topic, message);
-                        Plugin?.AddAction(name, topic, message);
 
                         index++;
                     }
@@ -337,8 +335,6 @@ namespace User.MQTTPlugin
             spButtonGrandParent.Children.Insert(index + 1, controlsEditor);
 
             //MQTTPlugin plugin = new MQTTPlugin();
-            //plugin.AddAction(action, topic, message);
-            Plugin?.AddAction(action, topic, message);
         }
 
         private void btnDeleteAction_Click(object sender, RoutedEventArgs e, StackPanel sp, string name)

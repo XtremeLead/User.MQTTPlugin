@@ -73,12 +73,18 @@ Unit tests are required. Use **MSTest**.
   - `Properties.Settings` ([Properties/Settings.settings](Properties/Settings.settings)) holds the real config: `mqttserver`, `mqttport`, `mqttuser`, `mqttpass`, `mqtttopic`, `mqtttls`, `mqttactions`, `lastConnectionSuccessful`. **`MQTTSettings`** ([MQTTSettings.cs](MQTTSettings.cs)) wraps it. `LoadSettings()` returns every value as a string (so booleans come back as `"True"`/`"False"`). `RememberSetting()` stages edits in memory as text. `SaveSettingsAsync()` converts each one to its setting's type, writes them only if all convert, and then reconnects. If one fails, it writes nothing, discards the staged edits and rethrows.
   - `MQTTPluginSettings` is SimHub's `ReadCommonSettings`/`SaveCommonSettings` store. It holds only leftover template content and is effectively unused.
 - **Password**: [Crypt.cs](Crypt.cs) encrypts it with DPAPI (`DataProtectionScope.CurrentUser`, fixed entropy) and stores it base64-encoded in `mqttpass`. `UnprotectString` never throws: an empty stored value, invalid base64 or a failed decryption all give `""`, and failures are logged as Error. `ProtectString` stores `""` when encryption fails.
-- **Actions**: these are stored in `mqttactions` as a `DataContractSerializer` XML dump of `Dictionary<string, (string topic, string message)>`. Each one is registered through `MQTTPlugin.AddAction(name, topic, message)` and appears in SimHub as `MQTTPlugin.<name>`. Actions are registered only when the settings UI is constructed (`LoadExistingActions`) or when the user saves.
+- **Actions**: these are stored in `mqttactions` as a `DataContractSerializer` XML dump of `Dictionary<string, (string topic, string message)>`. Each one appears in SimHub as `MQTTPlugin.<name>` and publishes its message to its topic through `MqttConnectionManager.Shared.Publish`.
+  - The plugin owns registration (F3, A3). `Init` loads the saved actions (`ActionRegistration.LoadSaved`) and calls `RegisterActions`. That calls `ActionRegistration.Register`, which clears all of the plugin's actions (`PluginManager.ClearActions(typeof(MQTTPlugin))`) and adds the current set, so renamed and removed actions disappear (B4).
+  - The settings page only shows the actions. Its "Save actions" validates the rows with `ActionRules.Validate`: incomplete rows are skipped, and duplicate names (ignoring case) refuse the whole save (D6). It then stores the actions and calls `MQTTPlugin.Instance.RegisterActions`.
+  - `IActionRegistry` is the test seam; `SimHubActionRegistry` is the real one.
 - **Settings UI**: `GetWPFSettingsControl` returns `SettingsControlV2` (the redesign, which is the active one). The legacy `SettingsControl` is still compiled because a constant switch selects between the two; F5 removes it (D3). Changes to the settings UI belong in V2.
+  - The page scrolls itself with one `ScrollViewer`, because SimHub doesn't scroll plugin pages (B12). Don't add nested scroll areas, because they swallow the mouse wheel.
+  - A triple click in any text or password field selects all its text. WPF's `ClickCount` doesn't reach 3 there, so `MultiClickCounter` counts the clicks itself.
 
 ## Known pitfalls
 
-- Saved actions are registered with SimHub only in `SettingsControlV2` (constructor and save), not in `MQTTPlugin.Init`. After a SimHub restart, actions may not fire until the plugin's settings page has been opened.
+- SimHub calls `End` on the old plugin instance before `Init` on the new one when the game changes (seen in F2), so the connection briefly stops and starts again.
+- Renaming an action creates a new action name. A control mapping made under Controls and events for the old name stays behind and has to be mapped again.
 - `M2MqttClientFactory` passes `null` as the CA certificate, so TLS connections don't verify the broker certificate against a CA.
 - The UI event handlers in `SettingsControlV2` update WPF controls after `await`. Don't add `ConfigureAwait(false)` there, because the continuation must run on the UI thread.
 
