@@ -6,7 +6,7 @@ For example, a button on your wheel can publish a message that triggers a Home A
 
 ## Installation
 
-1. Download the zip of the latest version from [Releases](https://github.com/XtremeLead/User.MQTTPlugin/releases/latest).
+1. Download the zip of the latest version from [Releases](https://github.com/XtremeLead/SimHub-MQTT-Plugin/releases/latest).
 2. Close SimHub.
 3. Extract the zip and copy both files, `User.MQTTPlugin.dll` and `M2Mqtt.Net.dll`, into your SimHub folder (usually `C:\Program Files (x86)\SimHub`). When you update, overwrite the existing files.
 4. Start SimHub. The first time, SimHub asks whether to enable the new plugin; confirm it.
@@ -111,7 +111,7 @@ The changes in each version are listed in [CHANGELOG.md](CHANGELOG.md). Download
 
 ## Contributing
 
-Bug reports, ideas and pull requests are welcome. Report a bug or suggest a feature under [Issues](https://github.com/XtremeLead/User.MQTTPlugin/issues/new/choose). Before you open a pull request, read [CONTRIBUTING.md](CONTRIBUTING.md): it explains how to build and test, and what a change needs. Report security problems privately, as described in [SECURITY.md](SECURITY.md).
+Bug reports, ideas and pull requests are welcome. Report a bug or suggest a feature under [Issues](https://github.com/XtremeLead/SimHub-MQTT-Plugin/issues/new/choose). Before you open a pull request, read [CONTRIBUTING.md](CONTRIBUTING.md): it explains how to build and test, and what a change needs. Report security problems privately, as described in [SECURITY.md](SECURITY.md).
 
 Version 3.0 was developed with the help of [Claude Code](https://claude.com/claude-code). That is why the repository contains `CLAUDE.md` (instructions for Claude Code), `PLAN.md` and `PROGRESS.md` (the improvement plan and its progress, in Dutch), and the skills in `.claude/skills/`. You don't need any of them to build or use the plugin.
 

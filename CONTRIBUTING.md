@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for wanting to help. Bug reports and ideas go under [Issues](https://github.com/XtremeLead/User.MQTTPlugin/issues/new/choose). This page is for code changes.
+Thanks for wanting to help. Bug reports and ideas go under [Issues](https://github.com/XtremeLead/SimHub-MQTT-Plugin/issues/new/choose). This page is for code changes.
 
 For anything bigger than a small fix, open an issue first, so we can agree on the approach before you put time into it.
 

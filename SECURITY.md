@@ -11,7 +11,7 @@ Only the latest release gets security fixes.
 
 ## Reporting a vulnerability
 
-Please don't report security problems in a public issue. Use GitHub's private reporting instead: open the [Security tab](https://github.com/XtremeLead/User.MQTTPlugin/security), click **Report a vulnerability**, and describe the problem and how to reproduce it.
+Please don't report security problems in a public issue. Use GitHub's private reporting instead: open the [Security tab](https://github.com/XtremeLead/SimHub-MQTT-Plugin/security), click **Report a vulnerability**, and describe the problem and how to reproduce it.
 
 This is a hobby project maintained in my spare time, so I can't promise a response time, but I'll look at every report and let you know what I'll do with it.
 
