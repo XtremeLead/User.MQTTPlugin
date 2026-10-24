@@ -54,6 +54,8 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 
 ## Log
 
+- **2026-10-24:** De gebruiker heeft bevestigd dat het nieuwe icoon in SimHub verschijnt. Versie 3.0.1 voorbereid: `AssemblyVersion`/`AssemblyFileVersion` staan op 3.0.1.0 en `CHANGELOG.md` heeft een sectie 3.0.1 met de licentie en het icoon. De gebruiker commit, merget en tagt zelf, en maakt daarna de repository openbaar.
+- **2026-10-24:** Voorbereiding om de repository openbaar te maken, buiten het plan. Het wachtwoord dat in de eerste commit stond, is door de gebruiker vervangen; de geschiedenis blijft zoals ze is. `LICENSE` (MIT, Maarten van der Kraan) is toegevoegd en de README verwijst ernaar. Het menu-icoon uit het SimHub-SDK-sjabloon (`sdkmenuicon.png`) is vervangen door een eigen icoon, `Resources/mqttmenuicon.png` (een stip met twee bogen aan elke kant), getest met `PictureIcon_Is24By24`. Er zijn nu 243 tests en ze slagen allemaal. Het icoon in het menu van SimHub moet nog handmatig worden gecontroleerd. De lokale branch `test` is verwijderd; de tag v1.0.0 wijst nog naar de commit ervan.
 - **2026-10-24:** Versiebeheer, buiten het plan: de bestaande tags v1.0.0–v2.0.2 blijven staan, en de verbeterde versie wordt v3.0.0 (afgesproken met de gebruiker). `AssemblyVersion`/`AssemblyFileVersion` staan nu op 3.0.0.0, `CHANGELOG.md` beschrijft alle versies en de README verwijst ernaar. De gebruiker merget en tagt zelf.
 
 - **2026-10-24:** De gebruiker heeft bevestigd dat de SimHub-propertylijst alleen nog `MQTTPlugin.MQTTMessage` toont; `CurrentDateTime` is weg (F5, A5).

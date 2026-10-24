@@ -72,11 +72,11 @@ namespace User.MQTTPlugin.Properties
         /// <summary>
         ///   Looks up a localized resource of type System.Drawing.Bitmap.
         /// </summary>
-        internal static System.Drawing.Bitmap sdkmenuicon
+        internal static System.Drawing.Bitmap mqttmenuicon
         {
             get
             {
-                object obj = ResourceManager.GetObject("sdkmenuicon", resourceCulture);
+                object obj = ResourceManager.GetObject("mqttmenuicon", resourceCulture);
                 return ((System.Drawing.Bitmap)(obj));
             }
         }
