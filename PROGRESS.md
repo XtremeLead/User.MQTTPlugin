@@ -42,6 +42,11 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 | A5 | Oude code en template-resten weg | F5 | ✅ |
 | L1–L6 | Leesbaarheid | F1/F4/F5 | ✅ L6 (F1), L2 (F4), L1, L3, L4 en L5 (F5) |
 | T1–T5 | Testbaarheid | F0b/F2 | ✅ T1 en T3 (F0b), T2, T4 en T5 (F2) |
+| W1 | Live verbindingsstatus op het instellingenscherm | — | ⬜ |
+| W2 | Configuratie exporteren en importeren | — | ⬜ |
+| W3 | Vaste, herkenbare client-ID | — | ⬜ |
+| W4 | Online/offline-status via LWT | — | ⬜ |
+| W5 | Laatste bericht per topic (`MQTTMessages`) | — | ⬜ |
 
 ## Beslissingen
 
@@ -57,6 +62,16 @@ Voortgang op het [verbeterplan](PLAN.md). Werk dit bestand bij na elke afgeronde
 
 ## Log
 
+- **2026-10-24:** CLAUDE.md ingekort, buiten het plan, volgens het advies in de documentatie van Claude Code (onder de 200 regels, alleen wat in elke sessie nodig is). Van 107 regels en ongeveer 17.000 tekens naar 76 regels en ongeveer 8.400 tekens.
+  - De testdetails (testproject, fakes en harnesses, bestanden en pakketten toevoegen, en de kanttekeningen bij de skills `code-testing` en `writing-mstest-tests`) staan nu in `.claude/rules/testing.md`. Die wordt alleen geladen bij werk in `User.MQTTPlugin.Tests/`.
+  - De afspraken voor het instellingenscherm staan in `.claude/rules/settings-ui.md`, die geladen wordt bij `SettingsControlV2*`, `SettingsViewLogic.cs` en `MultiClickCounter.cs`.
+  - De architectuursectie bevat alleen nog wat niet uit de code blijkt: de redenen (D1, D2, D4–D6, B5), de levenscyclus en de valkuilen. De build- en testcommando's staan samen in één blok. De regel dat elke wijziging tests krijgt, staat nog in CLAUDE.md.
+- **2026-10-24:** Wensen W1–W5 met de gebruiker in het plan opgenomen. Ze zijn nog niet in een fase ingedeeld.
+  - **Bewust niet opgenomen:**
+    - SimHub-telemetrie naar MQTT publiceren: de gebruiker wil alleen acties uitvoeren en het resultaat op een dashboard zien.
+    - Ingestelde topic-naar-property-koppelingen met een type: Home Assistant stuurt één JSON met meerdere velden per topic, dus het dashboard parset toch. W5 dekt het echte risico, een tweede statustopic.
+    - QoS en retain per actie: een retained commando wordt opnieuw uitgevoerd, en QoS helpt niet zolang een publish zonder verbinding wordt weggegooid. Retain komt alleen terug bij W4.
+  - **Gebruik bij de gebruiker:** abonnement op `simhub/status/#`; Home Assistant publiceert de airco-toestand op `simhub/status/kantoor/climate` als JSON (`temperature`, `airco`, `set_temp`, `fan_mode`, met getallen als tekst).
 - **2026-10-24:** GitHub-community-bestanden, buiten het plan. De README heeft een sectie "Installation" voor de zip uit Releases (met controle van de SHA-256) en een aparte sectie "Building from source"; de TLS-zin verwijst nu naar `SECURITY.md`, en de sectie "Contributing" verwijst naar het nieuwe `CONTRIBUTING.md` (bouwen, testen, C# 7.3, verplichte tests, PR's naar `develop`). Issue-formulieren in `.github/ISSUE_TEMPLATE/` (bugmelding, functieverzoek, en een link om beveiligingsproblemen privé te melden); de YAML is gecontroleerd met js-yaml.
 - **2026-10-24:** B13 met de gebruiker in het plan opgenomen: nieuwe fase F7 en beslissing D7 (standaard controleren, met de instelling "Allow untrusted certificate"). De valkuil in `CLAUDE.md` beschrijft het gedrag nu correct en verwijst naar B13.
 - **2026-10-24:** `SECURITY.md` toegevoegd (ondersteunde versies, melden via GitHub's private vulnerability reporting, bekende beperkingen). Daarbij gecontroleerd hoe TLS de broker controleert: tegen test.mosquitto.org:8883, waarvan Windows het certificaat afwijst, maakt M2Mqtt toch verbinding. De plugin accepteert dus elk certificaat. Dat is ernstiger dan de valkuil in `CLAUDE.md` beschrijft. Mogelijk nieuw punt (B13); nog niet in het plan opgenomen.
