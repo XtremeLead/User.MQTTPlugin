@@ -2,7 +2,7 @@
 
 Opgesteld op 2026-10-21 na een analyse van de codebase op commit `0693bec`. De voortgang staat in [PROGRESS.md](PROGRESS.md).
 
-Elk punt heeft een vaste code (B = bug, A = architectuur, L = leesbaarheid, T = testbaarheid). Gebruik die codes in commits, in `PROGRESS.md` en in gesprekken. Regelnummers horen bij commit `0693bec` en kunnen verschuiven. De methodenamen blijven leidend.
+Elk punt heeft een vaste code (B = bug, A = architectuur, L = leesbaarheid, T = testbaarheid, W = wens). Gebruik die codes in commits, in `PROGRESS.md` en in gesprekken. Regelnummers horen bij commit `0693bec` en kunnen verschuiven. De methodenamen blijven leidend.
 
 **Zekerheid:**
 - **bevestigd:** aangetoond met een experiment
@@ -155,6 +155,41 @@ Elk punt heeft een vaste code (B = bug, A = architectuur, L = leesbaarheid, T = 
 - **T3.** Een interface voor de instellingenopslag, zodat tests niet naar de echte `Properties.Settings` schrijven.
 - **T4.** Een kleine logger-interface in plaats van direct `SimHub.Logging.Current`. Het is nog onbekend of die in een testproces werkt.
 - **T5.** Een klok en een timer als injecteerbare afhankelijkheden voor de timestamp en de watchdog.
+
+## Wensen
+
+Toegevoegd op 2026-10-24. Dit zijn nieuwe functies, geen bugs. Ze zijn nog niet in een fase ingedeeld; dat gebeurt pas als de gebruiker er een kiest.
+
+### W1. Live verbindingsstatus op het instellingenscherm
+- **Huidige situatie:** `ConnectionStatus` toont de stand bij het openen van de pagina en na Test of Save. Valt de verbinding daarna weg of komt ze terug, dan blijft de oude tekst staan.
+- **Voorstel:** `MqttConnectionManager` krijgt een event voor de verbindingsstatus, en het scherm werkt de tekst daarmee bij via de `Dispatcher`.
+  - Het scherm meldt zich aan in `Loaded` en af in `Unloaded`, niet in de constructor: SimHub haalt de pagina uit beeld en zet haar terug zonder haar opnieuw te bouwen.
+  - De statustekst komt uit `SettingsViewLogic`, met tests.
+
+### W2. Configuratie exporteren en importeren
+- **Voorstel:** knoppen om de verbinding en de acties als JSON-bestand op te slaan en weer in te lezen, als back-up of om naar een andere pc over te zetten.
+  - Het versleutelde wachtwoord gaat niet mee, omdat DPAPI het aan de Windows-gebruiker koppelt. Na een import moet het opnieuw worden ingevuld.
+  - Importeren valideert zoals Save en Save actions (poort, dubbele actienamen) en slaat pas daarna op. Daarna volgen een reconnect en het opnieuw registreren van de acties.
+  - Het (de)serialiseren en valideren komt in een pure helper met tests.
+
+### W3. Vaste, herkenbare client-ID
+- **Huidige situatie:** elke connect gebruikt een nieuwe GUID ([MqttConnectionManager.cs:398](MqttConnectionManager.cs#L398)). Met een clean session werkt dat, maar in de logs van de broker is de plugin niet te herkennen, en ACL's per client zijn niet mogelijk.
+- **Voorstel:** een client-ID zoals `SimHub-MQTTPlugin-<8 hex>`, eenmalig gemaakt en bewaard in `MQTTPluginSettings`. De testverbinding gebruikt een eigen ID, zodat de broker de live verbinding niet verbreekt.
+
+### W4. Online/offline-status via Last Will and Testament
+- **Voorstel:** bij het verbinden een LWT opgeven, zodat de broker zelf een retained `offline` publiceert op een statustopic (bijvoorbeeld `simhub/plugin/status`) als SimHub wegvalt. Na het verbinden publiceert de plugin een retained `online`, en bij een eigen disconnect `offline`. Zo kan Home Assistant zien of SimHub draait.
+  - M2Mqtt ondersteunt dit via de `Connect`-overload met will-parameters. `IMqttClient` en de fake moeten daarvoor worden uitgebreid.
+  - Nog te beslissen: het topic (vast of instelbaar) en of de functie standaard aan staat.
+- **Retain:** dit is de enige plek waar de plugin zelf retain gebruikt. Retain of QoS per actie is bewust niet opgenomen: een retained commando wordt opnieuw uitgevoerd door elke abonnee die verbindt, en QoS 1/2 helpt niet zolang `Publish` zonder verbinding het bericht weggooit.
+
+### W5. Laatste bericht per topic
+- **Huidige situatie:** `MQTTMessage` bevat alleen het laatste bericht. Bij een wildcard-abonnement zoals `simhub/status/#` overschrijft een bericht op een tweede topic (bijvoorbeeld `simhub/status/kantoor/light`) de airco-toestand van `simhub/status/kantoor/climate`, waarna het dashboard de verkeerde payload parset.
+- **Voorstel:** een extra property `MQTTPlugin.MQTTMessages` met een JSON-object dat per topic de laatste envelop bevat (`{topic, payload, timestamp, timestampIso}`, zoals nu). Bijvoorbeeld: `JSON.parse($prop('MQTTPlugin.MQTTMessages'))['simhub/status/kantoor/climate'].payload.temperature`.
+  - `MQTTMessage` blijft ongewijzigd, zodat bestaande dashboards blijven werken.
+  - Er hoeft niets te worden ingesteld, en er worden geen properties dynamisch geregistreerd.
+  - Een leeg bericht (het wissen van een retained waarde) haalt het topic uit het object.
+  - Het bijhouden en opbouwen komt in een pure helper met tests, naast `MessageFormatter`.
+- **Prioriteit:** pas nodig als er een tweede statustopic bijkomt.
 
 ## Fasen
 

@@ -15,7 +15,7 @@ A SimHub plugin (.NET Framework 4.8, WPF, old-style non-SDK `.csproj` with `pack
 
 ## Plan and progress
 
-- [PLAN.md](PLAN.md) is the agreed improvement plan. Bugs, architecture, readability and testability items have fixed codes (B1, A1, L1, T1, ...), work is grouped into phases (F0, F0b, F1–F6, all done by 2026-10-24; F7 for B13 is open), and decisions are listed (D1–D7, all decided). Refer to items by code; give new bugs or decisions the next free code (B14, D8, ...). Don't change the plan's content without the user's agreement.
+- [PLAN.md](PLAN.md) is the agreed improvement plan. Bugs, architecture, readability, testability and wish items have fixed codes (B1, A1, L1, T1, W1, ...), work is grouped into phases (F0, F0b, F1–F6, all done by 2026-10-24; F7 for B13 is open), and decisions are listed (D1–D7, all decided). The wishes W1–W5 (new features) are not in a phase yet. Refer to items by code; give new bugs, wishes or decisions the next free code (B14, W6, D8, ...). Don't change the plan's content without the user's agreement.
 - [PROGRESS.md](PROGRESS.md) tracks progress. Update it after every completed step: the phase and item status, any decisions with their date, and a new log line at the top. Mark an item ✅ only after it is built and its tests pass.
 - Both files are written in Dutch, so keep them in Dutch.
 
